@@ -295,6 +295,9 @@ try {
         $dCurso = [];
         $isSpre = false;
         
+        $fallbackObj = null;
+        $fallbackIsSpre = false;
+
         foreach ($idsToTry as $tryId) {
             $url = $BASE_CAP . "curso/" . urlencode($tryId);
             $ch = curl_init($url);
@@ -302,34 +305,48 @@ try {
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: bearer ' . $tok]);
             $res = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
             
-            $data = json_decode($res, true);
-            if ($data) {
-                $obj = null;
-                if (isset($data[0]) || is_array($data) && array_keys($data) === range(0, count($data) - 1)) {
-                    foreach ($data as $item) {
-                        if (!empty($item['cdUrlCurso'])) {
-                            $obj = $item;
-                            break;
+            if ($httpCode >= 200 && $httpCode < 300) {
+                $data = json_decode($res, true);
+                if ($data) {
+                    $obj = null;
+                    if (isset($data[0]) || is_array($data) && array_keys($data) === range(0, count($data) - 1)) {
+                        foreach ($data as $item) {
+                            if (!empty($item['cdUrlCurso'])) {
+                                $obj = $item;
+                                break;
+                            }
                         }
+                        if (!$obj) $obj = $data[0] ?? [];
+                    } else {
+                        $obj = $data;
                     }
-                    if (!$obj) $obj = $data[0] ?? [];
-                } else {
-                    $obj = $data;
-                }
 
-                if ($obj && !empty($obj)) {
-                    $hasContent = !empty($obj['dsDescricao']) || !empty($obj['dsApresentacao']) || !empty($obj['dsEmenta']);
-                    if (!$hasContent && $tryId !== $spreId && $spreId) {
-                        continue;
+                    if ($obj && !empty($obj)) {
+                        if (!$fallbackObj) {
+                            $fallbackObj = $obj;
+                            $fallbackIsSpre = ($tryId === $spreId);
+                        }
+
+                        $hasContent = !empty($obj['dsDescricao']) || !empty($obj['dsApresentacao']) || !empty($obj['dsEmenta']) || !empty($obj['ementa']) || !empty($obj['apresentacao']);
+                        if (!$hasContent && $tryId !== $spreId && $spreId) {
+                            continue;
+                        }
+                        $dCurso = $obj;
+                        $isSpre = ($tryId === $spreId);
+                        if (!empty($obj['cdUrlCurso']) && !$urlSlugParam) $urlSlug = $obj['cdUrlCurso'];
+                        break;
                     }
-                    $dCurso = $obj;
-                    $isSpre = ($tryId === $spreId);
-                    if (!empty($obj['cdUrlCurso']) && !$urlSlugParam) $urlSlug = $obj['cdUrlCurso'];
-                    break;
                 }
             }
+        }
+
+        if (empty($dCurso) && $fallbackObj) {
+            $dCurso = $fallbackObj;
+            $isSpre = $fallbackIsSpre;
+            if (!empty($dCurso['cdUrlCurso']) && !$urlSlugParam) $urlSlug = $dCurso['cdUrlCurso'];
         }
 
         $description = $dCurso['dsDescricao'] ?? $dCurso['dsApresentacao'] ?? $dCurso['dsEmenta'] ?? null;
