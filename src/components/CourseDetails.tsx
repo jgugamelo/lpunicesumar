@@ -74,6 +74,26 @@ export function CourseDetails({ course, pricingData }: CourseDetailsProps) {
     mercadoChips = [...new Set(chips)].slice(0, 10) as string[];
   }
 
+  // Gerar descrição padrão quando a API não retorna texto
+  const nmCurso = course?.nmCurso || dCurso?.nmCurso || '';
+  const isPos = course?.idCurso?.startsWith('EPOS_');
+  const isTec = course?.idCurso?.startsWith('ETEC_');
+  const areaLabel = nicho || '';
+  const durStr = durMeses ? `${durMeses} meses` : '';
+  
+  const generateFallbackDescription = () => {
+    if (isPos) {
+      const grauStr = grauLabel && grauLabel !== '—' ? grauLabel.toLowerCase() : 'especialização';
+      return `A ${grauStr} em ${nmCurso} da UniCesumar foi desenvolvida para profissionais que desejam aprofundar seus conhecimentos e se destacar no mercado de trabalho${areaLabel ? ` na área de ${areaLabel}` : ''}. O curso combina conteúdo atualizado com metodologia ativa e 100% online, permitindo que você estude no seu ritmo sem abrir mão da qualidade.${durStr ? ` Com duração de ${durStr}, o programa foi estruturado para oferecer uma formação completa e prática.` : ''} A UniCesumar é reconhecida pelo MEC com nota máxima e conta com corpo docente de mestres e doutores experientes no mercado.`;
+    }
+    if (isTec) {
+      return `O curso técnico em ${nmCurso} da UniCesumar prepara profissionais qualificados para atuar com excelência no mercado. Com metodologia prática e conteúdo atualizado, você adquire as competências necessárias para início imediato na área de atuação escolhida.${durStr ? ` Duração: ${durStr}.` : ''}`;
+    }
+    return '';
+  };
+
+  const displayDescription = description || generateFallbackDescription() || null;
+
   return (
     <div className="flex flex-col gap-12 mt-10">
       
@@ -109,7 +129,7 @@ export function CourseDetails({ course, pricingData }: CourseDetailsProps) {
                  </div>
                  <h2 className="text-[28px] font-black text-[#003B5C] tracking-tight">Sobre o curso</h2>
               </div>
-              <div className="text-gray-600 leading-[1.8] text-[16px]" dangerouslySetInnerHTML={{ __html: (description || 'Informações do curso em breve.').replace(/\n/g, '<br><br>') }} />
+              <div className="text-gray-600 leading-[1.8] text-[16px]" dangerouslySetInnerHTML={{ __html: (displayDescription || 'Informações do curso em breve.').replace(/\n/g, '<br><br>') }} />
               
               {/* Onde você pode trabalhar (Flat Section seamlessly integrated) */}
               {mercadoText && (
