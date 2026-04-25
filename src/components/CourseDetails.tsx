@@ -66,7 +66,7 @@ export function CourseDetails({ course, pricingData }: CourseDetailsProps) {
   const modRaw   = dCurso?.dsModalidade || dCurso?.cdModalidade || dCurso?.cdGrupoCurso || '';
   const nmLower = course?.nmCurso?.toLowerCase() || '';
   const hardcodedSemiArray = ['semipresencial', 'hibrido', 'híbrido', 'biomedicina', 'enfermagem', 'farmácia', 'fisioterapia', 'nutrição', 'odontologia', 'arquitetura', 'estética'];
-  const isSemi = pricingData?._isSemipresencial || dCurso?._isSemipresencial || modRaw.toLowerCase().includes('hibrido') || modRaw.toLowerCase().includes('semipresencial') || hardcodedSemiArray.some(k => nmLower.includes(k));
+  const isSemi = pricingData?.preco?._isSemipresencial || dCurso?._isSemipresencial || modRaw.toLowerCase().includes('hibrido') || modRaw.toLowerCase().includes('semipresencial') || hardcodedSemiArray.some(k => nmLower.includes(k));
   const modLabel = isSemi ? 'EAD Semipresencial' : '100% Online (EAD)';
   const grauLabel = dCurso?.dsGrau || modRaw || '—';
   const nichoRaw = dCurso?.nicho?.nmNicho || '';
