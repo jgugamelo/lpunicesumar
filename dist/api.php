@@ -358,7 +358,9 @@ try {
         function fetchHTML($slug) {
             $bases = [
                 'https://inscricoes.unicesumar.edu.br/curso/',
-                'https://www.unicesumar.edu.br/graduacao/'
+                'https://www.unicesumar.edu.br/graduacao/',
+                'https://www.unicesumar.edu.br/pos-graduacao/',
+                'https://www.unicesumar.edu.br/pos-graduacao/curso/'
             ];
             $slugs = [$slug, $slug . '-ead', $slug . '-semipresencial', str_replace('-ead', '', $slug)];
             
