@@ -349,12 +349,53 @@ try {
 
         $html = fetchHTML($urlSlug);
         if ($html) {
+            // LD+JSON Parsing para FAQ e Description
+            if (preg_match_all('/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/i', $html, $matches)) {
+                foreach ($matches[1] as $jsonStr) {
+                    $json = json_decode($jsonStr, true);
+                    if ($json) {
+                        $schemas = isset($json['@graph']) ? $json['@graph'] : [$json];
+                        foreach ($schemas as $schema) {
+                            $type = $schema['@type'] ?? '';
+                            if (isset($schema['description']) && !$description) {
+                                $description = is_string($schema['description']) ? $schema['description'] : ($schema['description']['@value'] ?? null);
+                            }
+                            if (empty($faq) && ($type === 'FAQPage' || (is_array($type) && in_array('FAQPage', $type)))) {
+                                $items = $schema['mainEntity'] ?? $schema['hasPart'] ?? [];
+                                if (is_array($items)) {
+                                    foreach ($items as $q) {
+                                        $pergunta = $q['name'] ?? $q['text'] ?? '';
+                                        $resposta = $q['acceptedAnswer']['text'] ?? $q['suggestedAnswer']['text'] ?? '';
+                                        if ($pergunta) {
+                                            $faq[] = ['pergunta' => $pergunta, 'resposta' => $resposta];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             if (!$description) {
                 if (preg_match('/<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']{20,})["\']/i', $html, $m)) $description = $m[1];
                 elseif (preg_match('/<meta[^>]+content=["\']([^"\']{20,})["\'][^>]+name=["\']description["\']/i', $html, $m)) $description = $m[1];
             }
             if (preg_match('/youtube\.com\/embed\/([A-Za-z0-9_-]{11})/', $html, $m)) $videoId = $m[1];
             elseif (preg_match('/"videoId"\s*:\s*"([A-Za-z0-9_-]{11})"/', $html, $m)) $videoId = $m[1];
+        }
+
+        // Fetch Matriz Curricular
+        $urlMatriz = $BASE_CAP . "matriz-curricular?idCurso=" . urlencode($idCurso);
+        $chM = curl_init($urlMatriz);
+        curl_setopt($chM, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($chM, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($chM, CURLOPT_HTTPHEADER, ['Authorization: bearer ' . $tok]);
+        $resMatriz = curl_exec($chM);
+        curl_close($chM);
+        $matrizData = json_decode($resMatriz, true);
+        if (is_array($matrizData)) {
+            $matriz = $matrizData;
         }
 
         echo json_encode([
