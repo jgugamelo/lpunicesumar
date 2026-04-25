@@ -306,9 +306,24 @@ try {
             
             $data = json_decode($res, true);
             if ($data) {
-                $obj = isset($data[0]) ? $data[0] : $data;
-                $hasContent = !empty($obj['dsDescricao']) || !empty($obj['dsApresentacao']) || !empty($obj['dsEmenta']);
-                if ($hasContent || $tryId === $spreId) {
+                $obj = null;
+                if (isset($data[0]) || is_array($data) && array_keys($data) === range(0, count($data) - 1)) {
+                    foreach ($data as $item) {
+                        if (!empty($item['cdUrlCurso'])) {
+                            $obj = $item;
+                            break;
+                        }
+                    }
+                    if (!$obj) $obj = $data[0] ?? [];
+                } else {
+                    $obj = $data;
+                }
+
+                if ($obj && !empty($obj)) {
+                    $hasContent = !empty($obj['dsDescricao']) || !empty($obj['dsApresentacao']) || !empty($obj['dsEmenta']);
+                    if (!$hasContent && $tryId !== $spreId && $spreId) {
+                        continue;
+                    }
                     $dCurso = $obj;
                     $isSpre = ($tryId === $spreId);
                     if (!empty($obj['cdUrlCurso']) && !$urlSlugParam) $urlSlug = $obj['cdUrlCurso'];
