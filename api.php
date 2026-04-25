@@ -298,6 +298,9 @@ try {
         $fallbackObj = null;
         $fallbackIsSpre = false;
 
+        // Detectar se o prefixo tem variante semipresencial possível (só EGRAD_ tem ESPRE_)
+        $hasEspreVariant = (strpos($idCurso, 'EGRAD_') === 0 && $spreId);
+
         foreach ($idsToTry as $tryId) {
             $url = $BASE_CAP . "curso/" . urlencode($tryId);
             $ch = curl_init($url);
@@ -314,10 +317,7 @@ try {
                     $obj = null;
                     if (isset($data[0]) || is_array($data) && array_keys($data) === range(0, count($data) - 1)) {
                         foreach ($data as $item) {
-                            if (!empty($item['cdUrlCurso'])) {
-                                $obj = $item;
-                                break;
-                            }
+                            if (!empty($item['cdUrlCurso'])) { $obj = $item; break; }
                         }
                         if (!$obj) $obj = $data[0] ?? [];
                     } else {
@@ -331,9 +331,14 @@ try {
                         }
 
                         $hasContent = !empty($obj['dsDescricao']) || !empty($obj['dsApresentacao']) || !empty($obj['dsEmenta']) || !empty($obj['ementa']) || !empty($obj['apresentacao']);
-                        if (!$hasContent && $tryId !== $spreId && $spreId) {
-                            continue;
+                        
+                        // Só pular para ESPRE_ se: for um EGRAD_, tiver variante ESPRE_ E não tiver descrição
+                        if (!$hasContent && $hasEspreVariant && $tryId !== $spreId) {
+                            continue; // tenta ESPRE_ com descrição
                         }
+                        
+                        // Para EPOS_, ETEC_, EPRO_ etc. aceitar o objeto mesmo sem descrição
+                        // A descrição será obtida via scraping
                         $dCurso = $obj;
                         $isSpre = ($tryId === $spreId);
                         if (!empty($obj['cdUrlCurso']) && !$urlSlugParam) $urlSlug = $obj['cdUrlCurso'];
