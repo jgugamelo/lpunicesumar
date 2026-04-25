@@ -358,6 +358,52 @@ try {
         $videoId = null;
         $faq = [];
         $matriz = [];
+        $isEpos = strpos($idCurso, 'EPOS_') === 0;
+        $isEtec = strpos($idCurso, 'ETEC_') === 0;
+        
+        if ($isEpos || $isEtec) {
+            $viewUrl = 'https://inscricoes.unicesumar.edu.br/view/info/' . urlencode($idCurso) . '.html';
+            $chView = curl_init($viewUrl);
+            curl_setopt($chView, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($chView, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($chView, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible)');
+            curl_setopt($chView, CURLOPT_TIMEOUT, 8);
+            $viewHtml = curl_exec($chView);
+            $viewCode = curl_getinfo($chView, CURLINFO_HTTP_CODE);
+            curl_close($chView);
+            
+            if ($viewCode === 200 && $viewHtml) {
+                // Extrair duração real (ex: "10 meses")
+                if (preg_match('/class=["\']hero__info["\'][^>]*>(\d+\s*meses?)<\/p>/i', $viewHtml, $dm)) {
+                    $duracaoReal = trim($dm[1]);
+                    // Sobrescreve dsDuracao no objeto do curso
+                    $dCurso['dsDuracao_real'] = $duracaoReal;
+                }
+                
+                // Extrair parágrafos da descrição
+                if (preg_match('/Sobre o curso.*?(<p>[\s\S]*?)(?:<\/div>|<h[23])/i', $viewHtml, $sm)) {
+                    $pTags = [];
+                    preg_match_all('/<p[^>]*>([\s\S]*?)<\/p>/i', $sm[1], $pMatches);
+                    foreach ($pMatches[1] as $p) {
+                        $txt = strip_tags($p);
+                        $txt = html_entity_decode(trim($txt), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                        if (strlen($txt) > 40) $pTags[] = $txt;
+                    }
+                    if (!empty($pTags)) {
+                        $description = implode("\n\n", array_slice($pTags, 0, 6));
+                    }
+                }
+                
+                // Extrair YouTube video
+                if (preg_match('/youtube\.com\/embed\/([A-Za-z0-9_-]{11})/', $viewHtml, $vm)) {
+                    $videoId = $vm[1];
+                }
+            }
+        }
+
+        // =====================================================
+        // 2. FALLBACK: Scraping do site de inscrições (graduação)
+        // =====================================================
 
         // Funcao de scraping para PHP
         function fetchHTML($slug) {
@@ -365,7 +411,6 @@ try {
                 'https://inscricoes.unicesumar.edu.br/curso/',
                 'https://www.unicesumar.edu.br/graduacao/',
                 'https://www.unicesumar.edu.br/pos-graduacao/',
-                'https://www.unicesumar.edu.br/pos-graduacao/curso/'
             ];
             $slugs = [$slug, $slug . '-ead', $slug . '-semipresencial', str_replace('-ead', '', $slug)];
             
@@ -420,8 +465,10 @@ try {
                 if (preg_match('/<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']{20,})["\']/i', $html, $m)) $description = $m[1];
                 elseif (preg_match('/<meta[^>]+content=["\']([^"\']{20,})["\'][^>]+name=["\']description["\']/i', $html, $m)) $description = $m[1];
             }
-            if (preg_match('/youtube\.com\/embed\/([A-Za-z0-9_-]{11})/', $html, $m)) $videoId = $m[1];
-            elseif (preg_match('/"videoId"\s*:\s*"([A-Za-z0-9_-]{11})"/', $html, $m)) $videoId = $m[1];
+            if (!$videoId) {
+                if (preg_match('/youtube\.com\/embed\/([A-Za-z0-9_-]{11})/', $html, $m)) $videoId = $m[1];
+                elseif (preg_match('/"videoId"\s*:\s*"([A-Za-z0-9_-]{11})"/', $html, $m)) $videoId = $m[1];
+            }
         }
 
         // Fetch Matriz Curricular
