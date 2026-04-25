@@ -50,8 +50,19 @@ export function CourseDetails({ course, pricingData }: CourseDetailsProps) {
 
   const { curso: dCurso, description, faq, videoId, matriz } = content;
   
-  const durMeses = parseInt(dCurso?.dsDuracao || 0);
-  const durAnos  = durMeses ? `${Math.round(durMeses / 12)} anos (${durMeses} meses)` : '—';
+  // Duração: preferir dsDuracao_real (obtido do /view/info) ou calcular de dsDuracao
+  const durRealStr: string | undefined = dCurso?.dsDuracao_real; // ex: "10 meses"
+  const durMesesAPI = parseInt(dCurso?.dsDuracao || 0);
+  const durMeses = durMesesAPI;
+  const formatDuracao = (meses: number, realStr?: string): string => {
+    if (realStr) return realStr; // usa o valor real do site (ex: "10 meses")
+    if (!meses) return '—';
+    if (meses < 12) return `${meses} meses`;
+    const anos = Math.floor(meses / 12);
+    const resto = meses % 12;
+    return resto > 0 ? `${anos} ano${anos > 1 ? 's' : ''} e ${resto} meses` : `${anos} ano${anos > 1 ? 's' : ''}`;
+  };
+  const durAnos = formatDuracao(durMeses, durRealStr);
   const modRaw   = dCurso?.dsModalidade || dCurso?.cdModalidade || dCurso?.cdGrupoCurso || '';
   const nmLower = course?.nmCurso?.toLowerCase() || '';
   const hardcodedSemiArray = ['semipresencial', 'hibrido', 'híbrido', 'biomedicina', 'enfermagem', 'farmácia', 'fisioterapia', 'nutrição', 'odontologia', 'arquitetura', 'estética'];
