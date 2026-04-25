@@ -141,7 +141,7 @@ export function SecondaryEnrollmentCTA({
                     <CheckCircle2 size={18} className="text-green-500" /> Material Incluso
                   </div>
                   <div className="flex items-center gap-2 text-gray-500 font-bold text-sm">
-                    <MapPin size={18} className="text-blue-500" /> Duque de Caxias - RJ
+                    <MapPin size={18} className="text-blue-500" /> RJ
                   </div>
                 </div>
               </div>
@@ -183,7 +183,7 @@ export function SecondaryEnrollmentCTA({
                   <ArrowLeft size={16} /> Voltar para a oferta
                 </button>
                 <h2 className="text-[28px] md:text-[36px] font-black text-[#003B5C] mb-2">Quase lá! Nome e WhatsApp</h2>
-                <p className="text-gray-500 font-medium">Preencha abaixo para garantir a condição exclusiva no Polo Duque de Caxias - RJ.</p>
+                <p className="text-gray-500 font-medium">Preencha abaixo para garantir a condição exclusiva no RJ.</p>
               </div>
 
               <div className="max-w-xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
