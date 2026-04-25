@@ -1,0 +1,7 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=$HOME/polosunicesumar.com.br
+    - /usr/local/bin/npm install --prefix $DEPLOYPATH
+    - /usr/local/bin/npm run build --prefix $DEPLOYPATH
+    - cp -R $DEPLOYPATH/dist/. $DEPLOYPATH/
