@@ -390,7 +390,7 @@ try {
                         if (strlen($txt) > 40) $pTags[] = $txt;
                     }
                     if (!empty($pTags)) {
-                        $description = implode("\n\n", array_slice($pTags, 0, 6));
+                        $description = implode("\n\n", array_slice($pTags, 0, 15));
                     }
                 }
                 
