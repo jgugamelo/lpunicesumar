@@ -1,4 +1,4 @@
-const PROXY = '/api/uc';
+const PROXY = import.meta.env.PROD ? '/api.php' : '/api/uc';
 
 export async function fetchCursos() {
   const r = await fetch(PROXY + '?action=cursos');
