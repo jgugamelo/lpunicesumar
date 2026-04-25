@@ -282,7 +282,12 @@ try {
     if ($action === 'cursoConteudo') {
         if (!$idCurso) throw new Exception('idCurso obrigatório');
         
-        // Replicando fallback de conteúdo
+        $slugFromId = str_replace(['EGRAD_', 'EPOS_', 'ESPRE_', 'EPRES_'], '', str_replace('_', '-', strtoupper($idCurso)));
+        $slugFromId = strtolower(trim($slugFromId, '-'));
+        $slugFromName = $nmCursoParam ? toSlug($nmCursoParam) : null;
+        
+        $urlSlug = $urlSlugParam ?: $slugFromName ?: $slugFromId;
+        
         $spreId = toEspreId($idCurso);
         $idsToTry = [$idCurso];
         if ($spreId) $idsToTry[] = $spreId;
@@ -294,6 +299,7 @@ try {
             $url = $BASE_CAP . "curso/" . urlencode($tryId);
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: bearer ' . $tok]);
             $res = curl_exec($ch);
             curl_close($ch);
@@ -301,22 +307,63 @@ try {
             $data = json_decode($res, true);
             if ($data) {
                 $obj = isset($data[0]) ? $data[0] : $data;
-                // Verificação de conteúdo real
                 $hasContent = !empty($obj['dsDescricao']) || !empty($obj['dsApresentacao']) || !empty($obj['dsEmenta']);
                 if ($hasContent || $tryId === $spreId) {
                     $dCurso = $obj;
                     $isSpre = ($tryId === $spreId);
+                    if (!empty($obj['cdUrlCurso']) && !$urlSlugParam) $urlSlug = $obj['cdUrlCurso'];
                     break;
                 }
             }
         }
-        
+
+        $description = $dCurso['dsDescricao'] ?? $dCurso['dsApresentacao'] ?? $dCurso['dsEmenta'] ?? null;
+        $videoId = null;
+        $faq = [];
+        $matriz = [];
+
+        // Funcao de scraping para PHP
+        function fetchHTML($slug) {
+            $bases = [
+                'https://inscricoes.unicesumar.edu.br/curso/',
+                'https://www.unicesumar.edu.br/graduacao/'
+            ];
+            $slugs = [$slug, $slug . '-ead', $slug . '-semipresencial', str_replace('-ead', '', $slug)];
+            
+            foreach ($slugs as $s) {
+                foreach ($bases as $b) {
+                    $ch = curl_init($b . $s);
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+                    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                    curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+                    $html = curl_exec($ch);
+                    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    curl_close($ch);
+                    if ($code === 200) return $html;
+                }
+            }
+            return null;
+        }
+
+        $html = fetchHTML($urlSlug);
+        if ($html) {
+            if (!$description) {
+                if (preg_match('/<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']{20,})["\']/i', $html, $m)) $description = $m[1];
+                elseif (preg_match('/<meta[^>]+content=["\']([^"\']{20,})["\'][^>]+name=["\']description["\']/i', $html, $m)) $description = $m[1];
+            }
+            if (preg_match('/youtube\.com\/embed\/([A-Za-z0-9_-]{11})/', $html, $m)) $videoId = $m[1];
+            elseif (preg_match('/"videoId"\s*:\s*"([A-Za-z0-9_-]{11})"/', $html, $m)) $videoId = $m[1];
+        }
+
         echo json_encode([
             'curso' => $dCurso,
-            'description' => $dCurso['dsDescricao'] ?? $dCurso['dsApresentacao'] ?? null,
-            'faq' => [], // Scraping de FAQ no PHP exigiria biblioteca extra, mantendo simples
-            'videoId' => null,
-            'matriz' => []
+            'description' => $description,
+            'faq' => $faq,
+            'videoId' => $videoId,
+            'matriz' => $matriz,
+            '_isSemipresencial' => $isSpre
         ]);
         exit;
     }
