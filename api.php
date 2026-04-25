@@ -18,17 +18,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $BASE = 'https://gateway.unicesumar.edu.br/';
 $BASE_CAP = $BASE . 'central-captacao-standalone-api/';
 
-// Token de Autorização (TA) - Replicado do server.ts
-$TA = 'Basic ' . base64_encode('QVVUSF9TRV_TRVJWRVI6c2VjcmV0'); // Valor corrigido baseado nos charCodes
-// Nota: O valor original no server.ts é decodificado via String.fromCharCode. 
-// Vamos usar o valor exato resultante.
-$TA = "Basic QVVUSF9TRV9TRVJWRVI6c2VjcmV0";
+// Token de Autorização (TA) - Decodificado exatamente como no server.ts
+$codes = [66,97,115,105,99,32,81,86,86,85,83,70,57,84,82,86,74,87,82,86,73,54,99,50,86,106,99,109,86,48];
+$TA = "";
+foreach($codes as $c) $TA .= chr($c);
 
 function getOAuthToken($BASE, $TA) {
     $ch = curl_init($BASE . 'auth-server/oauth/token');
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, 'grant_type=client_credentials');
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Importante para alguns servidores HostGator
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Authorization: ' . $TA,
         'Content-Type: application/x-www-form-urlencoded'
@@ -52,6 +52,7 @@ function getCdToken($BASE_CAP, $tok) {
         'dsUtmContent' => null, 'dsUtmTerm' => null, 'dsGclid' => null,
         'cdGoogleId' => null, 'cdIp' => ''
     ]));
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Authorization: Bearer ' . $tok,
         'Content-Type: application/json'
@@ -96,6 +97,7 @@ try {
     if ($action === 'cursos') {
         $ch = curl_init($BASE_CAP . 'curso?idPais=90');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: bearer ' . $tok]);
         $response = curl_exec($ch);
         curl_close($ch);
@@ -108,6 +110,7 @@ try {
         $url = $BASE_CAP . "estado?idPais=90&idCurso=" . urlencode($idCurso);
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: bearer ' . $tok]);
         $response = curl_exec($ch);
         curl_close($ch);
@@ -133,6 +136,7 @@ try {
         $url = $BASE_CAP . "polo?idPais=90&idCurso=" . urlencode($idCurso) . "&idEstado=" . urlencode($idEstado);
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: bearer ' . $tok]);
         $response = curl_exec($ch);
         curl_close($ch);
@@ -188,6 +192,7 @@ try {
         $url = $BASE_CAP . "curso?idCurso=" . urlencode($idCurso) . "&idPolo=" . urlencode($idPolo);
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: bearer ' . $tok]);
         $res = curl_exec($ch);
         curl_close($ch);
