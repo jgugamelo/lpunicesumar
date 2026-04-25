@@ -41,8 +41,7 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
 
   // Form State
   const [tipoCurso, setTipoCurso] = useState('');
-  const [nichoPos, setNichoPos] = useState('');       // Filtro extra: Área do Curso (só Pós)
-  const [modalidadePos, setModalidadePos] = useState(''); // Filtro extra: Modalidade (só Pós)
+  const [searchPos, setSearchPos] = useState('');    // Busca por texto (só Pós)
   const [idCurso, setIdCurso] = useState('');
   const [idEstado, setIdEstado] = useState('');
   const [idPolo, setIdPolo] = useState('');
@@ -389,8 +388,7 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
     setIdCurso('');
     setIdEstado('');
     setIdPolo('');
-    setNichoPos('');
-    setModalidadePos('');
+    setSearchPos('');
     if (tipoCurso && cursosCache.length > 0) {
       const all = cursosCache.filter(c => c.idCurso && c.idCurso.startsWith(tipoCurso + '_'));
       const filtered = all.sort((a, b) => a.nmCurso.localeCompare(b.nmCurso, 'pt-BR'));
@@ -400,15 +398,17 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
     }
   }, [tipoCurso, cursosCache]);
 
-  // Quando nicho ou modalidade muda (só pós), re-filtra cursos
+  // Busca por texto nos cursos de Pós-Graduação
   useEffect(() => {
     if (tipoCurso !== 'EPOS') return;
     setIdCurso('');
     let pool = cursosCache.filter(c => c.idCurso && c.idCurso.startsWith('EPOS_'));
-    if (nichoPos) pool = pool.filter(c => (c.nicho?.nmNicho || '') === nichoPos);
-    if (modalidadePos) pool = pool.filter(c => (c.dsModalidade || c.cdModalidade || '') === modalidadePos);
+    if (searchPos.trim()) {
+      const q = searchPos.toLowerCase().trim();
+      pool = pool.filter(c => c.nmCurso?.toLowerCase().includes(q));
+    }
     setFilteredCursos(pool.sort((a, b) => a.nmCurso.localeCompare(b.nmCurso, 'pt-BR')));
-  }, [nichoPos, modalidadePos]);
+  }, [searchPos]);
 
   // Handle Curso change
   useEffect(() => {
@@ -598,47 +598,19 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
                 </select>
               </div>
 
-              {/* Área/Nicho — só Pós-Graduação */}
-              {tipoCurso === 'EPOS' && (() => {
-                const nichos = [...new Set(
-                  cursosCache.filter(c => c.idCurso?.startsWith('EPOS_') && c.nicho?.nmNicho)
-                    .map(c => c.nicho.nmNicho)
-                )].sort();
-                return (
-                  <div className="space-y-1.5 mb-4">
-                    <label className="block text-[12px] font-[600] text-[#004b8d] uppercase mb-1.5">Área <span className="text-red-500">*</span></label>
-                    <select
-                      value={nichoPos}
-                      onChange={e => setNichoPos(e.target.value)}
-                      className="w-full p-[12px] bg-[#fafbfc] border border-[#d1d9e0] rounded-[6px] text-[14px] outline-none focus:border-[#004b8d] transition-colors disabled:opacity-50"
-                    >
-                      <option value="">Todas as áreas</option>
-                      {nichos.map(n => <option key={n} value={n}>{n}</option>)}
-                    </select>
-                  </div>
-                );
-              })()}
-
-              {/* Modalidade — só Pós-Graduação */}
-              {tipoCurso === 'EPOS' && (() => {
-                const mods = [...new Set(
-                  cursosCache.filter(c => c.idCurso?.startsWith('EPOS_') && c.dsModalidade)
-                    .map(c => c.dsModalidade)
-                )].sort();
-                return (
-                  <div className="space-y-1.5 mb-4">
-                    <label className="block text-[12px] font-[600] text-[#004b8d] uppercase mb-1.5">Modalidade</label>
-                    <select
-                      value={modalidadePos}
-                      onChange={e => setModalidadePos(e.target.value)}
-                      className="w-full p-[12px] bg-[#fafbfc] border border-[#d1d9e0] rounded-[6px] text-[14px] outline-none focus:border-[#004b8d] transition-colors disabled:opacity-50"
-                    >
-                      <option value="">Todas</option>
-                      {mods.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                  </div>
-                );
-              })()}
+              {/* Busca por texto — só Pós-Graduação */}
+              {tipoCurso === 'EPOS' && (
+                <div className="space-y-1.5 mb-4">
+                  <label className="block text-[12px] font-[600] text-[#004b8d] uppercase mb-1.5">Buscar curso</label>
+                  <input
+                    type="text"
+                    placeholder="Digite o nome do curso..."
+                    value={searchPos}
+                    onChange={e => setSearchPos(e.target.value)}
+                    className="w-full p-[12px] bg-[#fafbfc] border border-[#d1d9e0] rounded-[6px] text-[14px] outline-none focus:border-[#004b8d] transition-colors"
+                  />
+                </div>
+              )}
 
               {/* Curso */}
               <div className={`space-y-1.5 mb-4 ${tipoCurso === 'EPOS' ? 'md:col-span-2' : ''}`}>
