@@ -598,20 +598,6 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
                 </select>
               </div>
 
-              {/* Busca por texto — só Pós-Graduação */}
-              {tipoCurso === 'EPOS' && (
-                <div className="space-y-1.5 mb-4">
-                  <label className="block text-[12px] font-[600] text-[#004b8d] uppercase mb-1.5">Buscar curso</label>
-                  <input
-                    type="text"
-                    placeholder="Digite o nome do curso..."
-                    value={searchPos}
-                    onChange={e => setSearchPos(e.target.value)}
-                    className="w-full p-[12px] bg-[#fafbfc] border border-[#d1d9e0] rounded-[6px] text-[14px] outline-none focus:border-[#004b8d] transition-colors"
-                  />
-                </div>
-              )}
-
               {/* Curso */}
               <div className={`space-y-1.5 mb-4 ${tipoCurso === 'EPOS' ? 'md:col-span-2' : ''}`}>
                 <label className="block text-[12px] font-[600] text-[#004b8d] uppercase mb-1.5">Curso <span className="text-red-500">*</span></label>
