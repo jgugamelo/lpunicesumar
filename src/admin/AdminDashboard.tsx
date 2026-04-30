@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Loader2, Users, Eye, MessageCircle, LogOut, ArrowRight, Headphones, BookOpen, Phone, Mail, Clock, Paperclip, Mic, FileDown } from 'lucide-react';
+import { Loader2, Users, Eye, MessageCircle, LogOut, ArrowRight, Headphones, BookOpen, Phone, Mail, Clock, Paperclip, Mic, FileDown, Pin, Tag, Plus, X, Settings } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
@@ -102,6 +102,19 @@ export function AdminDashboard() {
   const [exportStartDate, setExportStartDate] = useState('');
   const [exportEndDate, setExportEndDate] = useState('');
   const [showExportMenu, setShowExportMenu] = useState(false);
+
+  // Novas Funcionalidades: Tags, Quick Messages
+  const [systemTags, setSystemTags] = useState<any[]>([]);
+  const [leadTags, setLeadTags] = useState<any[]>([]);
+  const [showTagMenu, setShowTagMenu] = useState(false);
+  const [newTagInput, setNewTagInput] = useState('');
+
+  const [quickMessages, setQuickMessages] = useState<any[]>([]);
+  const [showQuickMessages, setShowQuickMessages] = useState(false);
+  const [quickMessageFilter, setQuickMessageFilter] = useState('');
+  const [showQuickMessagesModal, setShowQuickMessagesModal] = useState(false);
+  const [newQmShortcut, setNewQmShortcut] = useState('');
+  const [newQmContent, setNewQmContent] = useState('');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -210,6 +223,35 @@ export function AdminDashboard() {
     if (data) {
       setAdminChatMessages(prev => prev.map(m => m.id === optId ? { ...m, id: data.id } : m));
     }
+  };
+
+  const handleAddTag = async (tagName: string) => {
+    if (!tagName.trim() || !selectedAdminChat) return;
+    const name = tagName.trim().toUpperCase();
+    let tag = systemTags.find(t => t.name === name);
+    if (!tag) {
+      const { data } = await supabase.from('tags').insert([{ name, created_by: consultantId }]).select().single();
+      if (data) {
+        tag = data;
+        setSystemTags(prev => [...prev, data]);
+      }
+    }
+    if (tag) {
+      const { error } = await supabase.from('lead_tags').insert([{ lead_id: selectedAdminChat.lead_id, tag_id: tag.id, assigned_by: consultantId }]);
+      if (!error) {
+        setLeadTags(prev => [...prev, { tag_id: tag.id, tags: { name: tag.name }, assigned_by: consultantId }]);
+      } else {
+        alert("Erro ao adicionar tag (Máximo 5 tags ou erro de permissão).");
+      }
+    }
+    setNewTagInput('');
+    setShowTagMenu(false);
+  };
+
+  const handleRemoveTag = async (tagId: string) => {
+    if (!selectedAdminChat) return;
+    await supabase.from('lead_tags').delete().match({ lead_id: selectedAdminChat.lead_id, tag_id: tagId });
+    setLeadTags(prev => prev.filter(t => t.tag_id !== tagId));
   };
 
   const handleAssignChat = async (chatId: string, cId: string | null) => {
@@ -326,6 +368,9 @@ export function AdminDashboard() {
   // Carregar mensagens e ouvir o chat ativo selecionado
   useEffect(() => {
     if (selectedAdminChat && consultantId) {
+       // Carrega as tags do lead
+       supabase.from('lead_tags').select('*, tags(name)').eq('lead_id', selectedAdminChat.lead_id).then(({data}) => setLeadTags(data || []));
+
        // Removido auto-atribuição (consultant_id) para cumprir requisito de botão explícito
        supabase.from('messages').select('*').eq('chat_id', selectedAdminChat.id).order('created_at').then(({data}) => setAdminChatMessages(data || []));
 
@@ -447,6 +492,18 @@ export function AdminDashboard() {
       supabase.from('consultants').select('*').then(({data}) => setTeam(data || []));
     }
   }, [activeTab, userRole]);
+
+  // Carregar Tags e Mensagens Rápidas
+  useEffect(() => {
+    if (activeTab === 'chat') {
+      supabase.from('tags').select('*').then(({data}) => setSystemTags(data || []));
+      if (consultantId) {
+        supabase.from('quick_messages').select('*')
+          .or(`consultant_id.is.null,consultant_id.eq.${consultantId}`)
+          .then(({data}) => setQuickMessages(data || []));
+      }
+    }
+  }, [activeTab, consultantId]);
 
   const toggleUserRole = async (id: string, currentRole: string) => {
     const newRole = currentRole === 'admin' ? 'consultor' : 'admin';
@@ -1136,6 +1193,12 @@ export function AdminDashboard() {
                       return true;
                     });
 
+                    filtered.sort((a, b) => {
+                      if (a.is_pinned && !b.is_pinned) return -1;
+                      if (!a.is_pinned && b.is_pinned) return 1;
+                      return new Date(b.started_at).getTime() - new Date(a.started_at).getTime();
+                    });
+
                     if (filtered.length === 0) {
                       return <div className="p-10 text-center text-sm text-gray-400 italic">Nenhum atendimento nesta categoria.</div>;
                     }
@@ -1160,7 +1223,22 @@ export function AdminDashboard() {
                           className={`w-full flex flex-col relative text-left p-4 border-b border-gray-100 transition-colors ${selectedAdminChat?.id === chat.id ? 'bg-white border-l-4 border-l-[#fdb913]' : 'hover:bg-white border-l-4 border-l-transparent'}`}
                         >
                           <div className="flex justify-between items-start mb-1 gap-2">
-                             <h4 className="font-bold text-[#003B5C] text-sm leading-tight">{lData?.nome || 'Lead Anônimo'}</h4>
+                             <div className="flex items-center gap-1">
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const newVal = !chat.is_pinned;
+                                    supabase.from('chats').update({ is_pinned: newVal }).eq('id', chat.id).then();
+                                    setAdminChats(prev => prev.map(c => c.id === chat.id ? { ...c, is_pinned: newVal } : c));
+                                    if(selectedAdminChat?.id === chat.id) setSelectedAdminChat({...selectedAdminChat, is_pinned: newVal});
+                                  }}
+                                  className={`p-1 rounded transition-colors ${chat.is_pinned ? 'text-[#fdb913] hover:text-yellow-600 bg-yellow-50' : 'text-gray-300 hover:text-gray-500'}`}
+                                  title={chat.is_pinned ? "Desfixar conversa" : "Fixar conversa"}
+                                >
+                                  <Pin size={12} fill={chat.is_pinned ? "currentColor" : "none"} />
+                                </button>
+                                <h4 className="font-bold text-[#003B5C] text-sm leading-tight">{lData?.nome || 'Lead Anônimo'}</h4>
+                             </div>
                              {chatStatusTab === 'all' && (
                                <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full ${config.color}`}>
                                  {config.label}
@@ -1218,11 +1296,57 @@ export function AdminDashboard() {
                           <div className="flex flex-col">
                             <h4 className="font-black text-[#003B5C] text-lg">{activeLead?.nome}</h4>
                             
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-1.5 mb-3 text-[11px] font-medium text-gray-500">
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-1.5 mb-1 text-[11px] font-medium text-gray-500">
                               <span className="flex items-center gap-1.5"><BookOpen size={14} className="text-blue-400" /> {activeLead?.nm_curso || 'Sem curso'}</span>
                               <span className="flex items-center gap-1.5"><Phone size={14} className="text-green-500" /> {activeLead?.whatsapp || 'Sem telefone'}</span>
                               <span className="flex items-center gap-1.5"><Mail size={14} className="text-amber-500" /> {activeLead?.email || 'Sem e-mail'}</span>
                               <span className="flex items-center gap-1.5"><Clock size={14} className="text-gray-400" /> {activeLead?.created_at ? new Date(activeLead.created_at).toLocaleString('pt-BR') : 'Data desconhecida'}</span>
+                            </div>
+
+                            {/* Tags Area */}
+                            <div className="flex flex-wrap gap-1 mb-3">
+                              {leadTags.map(lt => (
+                                <span key={lt.tag_id} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 uppercase">
+                                  <Tag size={10} /> {lt.tags?.name}
+                                  {(userRole === 'admin' || lt.assigned_by === consultantId) && (
+                                    <button onClick={() => handleRemoveTag(lt.tag_id)} className="hover:text-red-500 ml-1 bg-blue-200/50 rounded-full p-0.5"><X size={8}/></button>
+                                  )}
+                                </span>
+                              ))}
+                              {leadTags.length < 5 && (
+                                <div className="relative">
+                                  <button onClick={() => setShowTagMenu(!showTagMenu)} className="bg-slate-100 text-slate-500 hover:bg-slate-200 px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 uppercase transition-colors">
+                                    <Plus size={10} /> Add Tag
+                                  </button>
+                                  {showTagMenu && (
+                                    <>
+                                      <div className="fixed inset-0 z-40" onClick={() => setShowTagMenu(false)}></div>
+                                      <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-2">
+                                         <input 
+                                           type="text" 
+                                           placeholder="Buscar ou criar tag (Enter)"
+                                           value={newTagInput}
+                                           onChange={e => setNewTagInput(e.target.value)}
+                                           onKeyDown={e => { if(e.key === 'Enter') handleAddTag(newTagInput) }}
+                                           className="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none mb-2 focus:border-blue-400"
+                                         />
+                                         <div className="max-h-32 overflow-auto flex flex-col gap-1">
+                                           {systemTags.filter(t => t.name.toLowerCase().includes(newTagInput.toLowerCase())).map(t => (
+                                             <button key={t.id} onClick={() => handleAddTag(t.name)} className="text-left text-xs p-1.5 hover:bg-slate-50 rounded-md font-medium text-gray-700 uppercase">
+                                               {t.name}
+                                             </button>
+                                           ))}
+                                           {newTagInput && !systemTags.some(t => t.name.toLowerCase() === newTagInput.toLowerCase()) && (
+                                             <button onClick={() => handleAddTag(newTagInput)} className="text-left text-xs p-1.5 hover:bg-blue-50 text-blue-600 rounded-md font-bold uppercase flex items-center gap-1">
+                                               <Plus size={10} /> Criar "{newTagInput}"
+                                             </button>
+                                           )}
+                                         </div>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              )}
                             </div>
 
                             <div className="flex flex-wrap gap-2 items-center">
@@ -1377,13 +1501,56 @@ export function AdminDashboard() {
                             </div>
                           </div>
                         ) : (
-                          <input 
-                            type="text" 
-                            value={adminChatInput}
-                            onChange={e => setAdminChatInput(e.target.value)}
-                            placeholder="Responda o lead..." 
-                            className="flex-1 bg-slate-50 border border-gray-200 rounded-xl px-4 text-sm font-medium outline-none focus:border-[#003B5C] focus:ring-2 focus:ring-[#003B5C]/10 py-3 w-0" 
-                          />
+                          <div className="relative flex-1 flex">
+                            {showQuickMessages && (
+                              <>
+                                <div className="fixed inset-0 z-40" onClick={() => setShowQuickMessages(false)}></div>
+                                <div className="absolute bottom-full left-0 mb-2 w-full md:w-80 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
+                                  <div className="bg-slate-50 px-3 py-2 border-b border-gray-100 flex justify-between items-center">
+                                    <span className="text-[10px] font-black text-gray-500 uppercase">Mensagens Rápidas</span>
+                                    <button type="button" onClick={() => { setShowQuickMessages(false); setShowQuickMessagesModal(true); }} className="text-[10px] font-bold text-[#003B5C] hover:underline flex items-center gap-1">
+                                      <Settings size={10} /> Gerenciar
+                                    </button>
+                                  </div>
+                                  <div className="max-h-48 overflow-auto flex flex-col">
+                                    {quickMessages.filter(qm => qm.shortcut.toLowerCase().includes(quickMessageFilter)).map(qm => (
+                                      <button 
+                                        key={qm.id} 
+                                        type="button"
+                                        onClick={() => {
+                                          setAdminChatInput(qm.content);
+                                          setShowQuickMessages(false);
+                                        }}
+                                        className="text-left p-3 border-b border-gray-50 hover:bg-slate-50 transition-colors flex flex-col gap-1"
+                                      >
+                                        <span className="text-xs font-black text-[#003B5C]">/{qm.shortcut}</span>
+                                        <span className="text-[11px] text-gray-500 line-clamp-2">{qm.content}</span>
+                                      </button>
+                                    ))}
+                                    {quickMessages.filter(qm => qm.shortcut.toLowerCase().includes(quickMessageFilter)).length === 0 && (
+                                      <div className="p-4 text-center text-xs text-gray-400">Nenhum atalho encontrado.</div>
+                                    )}
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                            <input 
+                              type="text" 
+                              value={adminChatInput}
+                              onChange={e => {
+                                const val = e.target.value;
+                                setAdminChatInput(val);
+                                if (val.startsWith('/')) {
+                                  setShowQuickMessages(true);
+                                  setQuickMessageFilter(val.slice(1).toLowerCase());
+                                } else {
+                                  setShowQuickMessages(false);
+                                }
+                              }}
+                              placeholder="Responda o lead... (Digite / para mensagens rápidas)" 
+                              className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 text-sm font-medium outline-none focus:border-[#003B5C] focus:ring-2 focus:ring-[#003B5C]/10 py-3" 
+                            />
+                          </div>
                         )}
                         
                         {!isRecording && adminChatInput.trim() ? (
@@ -1472,6 +1639,62 @@ export function AdminDashboard() {
         )}
 
       </div>
+
+      {/* Modal Mensagens Rápidas */}
+      {showQuickMessagesModal && (
+        <div className="fixed inset-0 bg-[#001D2D]/80 flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-[24px] w-full max-w-lg p-6 shadow-2xl flex flex-col max-h-[90vh]">
+             <div className="flex justify-between items-center mb-6 shrink-0">
+               <h3 className="text-xl font-black text-[#003B5C]">Mensagens Rápidas</h3>
+               <button onClick={() => setShowQuickMessagesModal(false)} className="text-gray-400 hover:text-gray-600"><X size={24}/></button>
+             </div>
+             
+             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-6 shrink-0">
+               <h4 className="text-xs font-bold text-gray-500 uppercase mb-3">Criar Novo Atalho</h4>
+               <div className="flex flex-col gap-3">
+                 <input type="text" placeholder="Atalho (ex: ola)" value={newQmShortcut} onChange={e => setNewQmShortcut(e.target.value.replace(/[^a-zA-Z0-9_-]/g, ''))} className="w-full text-sm p-2 bg-white border border-gray-200 rounded-lg outline-none focus:border-[#003B5C]" />
+                 <textarea placeholder="Conteúdo da mensagem..." value={newQmContent} onChange={e => setNewQmContent(e.target.value)} rows={3} className="w-full text-sm p-2 bg-white border border-gray-200 rounded-lg outline-none focus:border-[#003B5C] resize-none" />
+                 <button 
+                   onClick={async () => {
+                     if (!newQmShortcut || !newQmContent) return;
+                     const { data } = await supabase.from('quick_messages').insert([{ shortcut: newQmShortcut.toLowerCase(), content: newQmContent, consultant_id: consultantId }]).select().single();
+                     if (data) {
+                       setQuickMessages(prev => [...prev, data]);
+                       setNewQmShortcut(''); setNewQmContent('');
+                     }
+                   }}
+                   className="bg-[#003B5C] text-white font-bold text-xs uppercase py-2 rounded-lg hover:bg-[#004b8d] transition-colors"
+                 >
+                   Salvar Atalho
+                 </button>
+               </div>
+             </div>
+
+             <div className="overflow-auto flex flex-col gap-2 flex-1 pr-2">
+               {quickMessages.filter(qm => qm.consultant_id === consultantId).map(qm => (
+                 <div key={qm.id} className="bg-white border border-gray-100 rounded-xl p-3 flex justify-between items-start gap-4 shadow-sm">
+                   <div className="flex flex-col">
+                     <span className="text-xs font-black text-[#003B5C]">/{qm.shortcut}</span>
+                     <span className="text-[11px] text-gray-500 whitespace-pre-wrap">{qm.content}</span>
+                   </div>
+                   <button 
+                     onClick={async () => {
+                       await supabase.from('quick_messages').delete().eq('id', qm.id);
+                       setQuickMessages(prev => prev.filter(q => q.id !== qm.id));
+                     }}
+                     className="text-red-400 hover:text-red-600 p-1 shrink-0"
+                   >
+                     <X size={14} />
+                   </button>
+                 </div>
+               ))}
+               {quickMessages.filter(qm => qm.consultant_id === consultantId).length === 0 && (
+                 <div className="text-center text-gray-400 text-xs py-4">Você ainda não possui atalhos salvos.</div>
+               )}
+             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
