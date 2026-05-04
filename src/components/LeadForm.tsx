@@ -216,8 +216,8 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
              const { data: newLeadData, error: newLeadError } = await supabase.from('leads').insert([{
                nome: 'Visitante (Anônimo)',
                whatsapp: '(Não informado)',
+               email: '',
                contato_preferencia: 'chat',
-               status: 'novo',
                nm_curso: 'Acesso Direto (Chat Ao Vivo)',
                utm_source: new URLSearchParams(window.location.search).get('utm_source') || 'direto',
                utm_medium: new URLSearchParams(window.location.search).get('utm_medium') || '',
@@ -261,8 +261,8 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
          const { data: newLeadData, error: newLeadError } = await supabase.from('leads').insert([{
            nome: promptNome,
            whatsapp: promptWhatsapp,
+           email: '',
            contato_preferencia: 'chat',
-           status: 'novo',
            nm_curso: 'Acesso Direto (Sem Form)',
            utm_source: new URLSearchParams(window.location.search).get('utm_source') || 'direto',
            utm_medium: new URLSearchParams(window.location.search).get('utm_medium') || '',
