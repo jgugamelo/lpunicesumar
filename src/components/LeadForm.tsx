@@ -206,11 +206,38 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
     }
   };
 
-  const onAcessarAtendimentoClick = () => {
+  const onAcessarAtendimentoClick = async () => {
     if (activeChatId) {
        setShowChatModal(true);
     } else {
-       setShowDirectChatPrompt(true);
+       if (onlineConsultants > 0) {
+          setIsSubmitting(true);
+          try {
+             const { data: newLeadData, error: newLeadError } = await supabase.from('leads').insert([{
+               nome: 'Visitante (Anônimo)',
+               whatsapp: '(Não informado)',
+               contato_preferencia: 'chat',
+               status: 'novo',
+               nm_curso: 'Acesso Direto (Chat Ao Vivo)',
+               utm_source: new URLSearchParams(window.location.search).get('utm_source') || 'direto',
+               utm_medium: new URLSearchParams(window.location.search).get('utm_medium') || '',
+               utm_campaign: new URLSearchParams(window.location.search).get('utm_campaign') || ''
+             }]).select().single();
+             
+             if (newLeadData && !newLeadError) {
+               setDbLeadId(newLeadData.id);
+               setLead(prev => ({ ...prev, nome: newLeadData.nome, whatsapp: newLeadData.whatsapp }));
+               await handleStartChat(newLeadData.id, newLeadData);
+               setShowChatModal(true);
+             }
+          } catch(err) {
+             console.error(err);
+          } finally {
+             setIsSubmitting(false);
+          }
+       } else {
+          setShowDirectChatPrompt(true);
+       }
     }
   };
 
@@ -1104,9 +1131,10 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
                
                <button 
                  onClick={onAcessarAtendimentoClick}
+                 disabled={isSubmitting}
                  className="w-full bg-[#00A8B1] hover:bg-[#008F96] text-white font-black text-[13px] uppercase tracking-wider py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
                >
-                 <MessageCircle size={16} /> Converse com a equipe
+                 {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />} Converse com a equipe
                </button>
             </div>
           )}
@@ -1114,9 +1142,10 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
           {/* Botão Ícone Circular */}
           <button 
             onClick={onAcessarAtendimentoClick}
+            disabled={isSubmitting}
             className="pointer-events-auto bg-[#00A8B1] text-white w-16 h-16 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all flex items-center justify-center relative self-end"
           >
-            <MessageCircle size={30} fill="currentColor" strokeWidth={1} />
+            {isSubmitting ? <Loader2 size={30} className="animate-spin" /> : <MessageCircle size={30} fill="currentColor" strokeWidth={1} />}
             {onlineConsultants > 0 && <div className="absolute top-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full animate-pulse"></div>}
           </button>
         </div>,
