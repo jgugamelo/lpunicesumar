@@ -79,7 +79,7 @@ export function AdminDashboard() {
   
   // Stats & Tables
   const [stats, setStats] = useState({ visits: 0, leads: 0 });
-  const [metrics, setMetrics] = useState({ chats: 0, wpp: 0 });
+  const [metrics, setMetrics] = useState({ chats: 0, wpp: 0, wppDireto: 0 });
   const [perfConsultor, setPerfConsultor] = useState<{nome: string, count: number}[]>([]);
   const [analyticsLeads, setAnalyticsLeads] = useState<any[]>([]);
   const [analyticsVisits, setAnalyticsVisits] = useState<any[]>([]);
@@ -454,12 +454,13 @@ export function AdminDashboard() {
         setAnalyticsLeads(lData || []);
         setAnalyticsVisits(allVData || []);
 
-        let chatsC = 0, wppC = 0;
+        let chatsC = 0, wppC = 0, wppDiretoC = 0;
         lData?.forEach(l => {
           if (l.contato_preferencia === 'chat') chatsC++;
           if (l.contato_preferencia === 'whatsapp') wppC++;
+          if (l.contato_preferencia === 'whatsapp_direto') wppDiretoC++;
         });
-        setMetrics({ chats: chatsC, wpp: wppC });
+        setMetrics({ chats: chatsC, wpp: wppC, wppDireto: wppDiretoC });
 
         // Calc consultores
         const counts: Record<string, number> = {};
@@ -806,7 +807,7 @@ export function AdminDashboard() {
             
             {/* KPI Cards */}
             {(() => {
-              const activeConvs = metrics.chats + metrics.wpp;
+              const activeConvs = metrics.chats + metrics.wpp + metrics.wppDireto;
               
               return (
                 <>
@@ -836,8 +837,12 @@ export function AdminDashboard() {
                        <h3 className="font-black text-[#003B5C] mb-4">Volume por Canal</h3>
                        <div className="flex gap-8">
                          <div className="flex flex-col">
-                           <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">WhatsApp</span>
+                           <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">WhatsApp (Form)</span>
                            <span className="text-2xl font-black text-green-600">{metrics.wpp}</span>
+                         </div>
+                         <div className="flex flex-col">
+                           <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">WhatsApp Direto</span>
+                           <span className="text-2xl font-black text-green-500">{metrics.wppDireto}</span>
                          </div>
                          <div className="flex flex-col">
                            <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">Chat Nativo</span>
