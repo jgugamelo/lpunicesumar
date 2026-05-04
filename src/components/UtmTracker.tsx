@@ -14,7 +14,8 @@ export function UtmTracker() {
           utm_source: searchParams.get('utm_source'),
           utm_medium: searchParams.get('utm_medium'),
           utm_campaign: searchParams.get('utm_campaign'),
-          path: window.location.pathname
+          path: window.location.pathname,
+          full_url: window.location.href
         };
 
         // Somente grava se não houver um erro de conexão obsoleto

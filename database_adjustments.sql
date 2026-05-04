@@ -122,3 +122,6 @@ CREATE POLICY "Modificar próprias mensagens rápidas" ON public.quick_messages
 
 -- Adiciona a coluna is_pinned na tabela de chats para permitir fixar conversas importantes
 ALTER TABLE public.chats ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT false;
+
+-- 4. Gravar a URL completa nas visitas
+ALTER TABLE public.page_visits ADD COLUMN IF NOT EXISTS full_url TEXT;
