@@ -1002,13 +1002,13 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
       {createPortal(
         <button 
           onClick={onAcessarAtendimentoClick}
-          className="fixed bottom-6 right-6 z-[4000] bg-[#fdb913] text-[#003B5C] p-4 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all group flex items-center gap-3 border-4 border-[#003B5C]"
+          className="fixed bottom-6 right-6 z-[4000] bg-[#fdb913] text-[#003B5C] w-16 h-16 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all group flex items-center justify-center border-4 border-[#003B5C]"
         >
-          <div className="relative">
-            <MessageCircle size={32} />
+          <div className="relative flex items-center justify-center">
+            <MessageCircle size={28} />
             {onlineConsultants > 0 && <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 border-2 border-[#fdb913] rounded-full animate-pulse"></div>}
           </div>
-          <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 font-black uppercase text-sm whitespace-nowrap">
+          <span className="absolute right-full mr-4 bg-white text-[#003B5C] text-[13px] font-bold px-4 py-2 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
             Acessar Atendimento
           </span>
         </button>,
