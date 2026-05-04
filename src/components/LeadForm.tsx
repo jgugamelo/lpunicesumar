@@ -38,6 +38,7 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
   const [polos, setPolos] = useState<any[]>([]);
   const [preco, setPreco] = useState<any | null>(null);
   const [loadingPreco, setLoadingPreco] = useState(false);
+  const [autoSelectFailed, setAutoSelectFailed] = useState(false);
 
   // Form State
   const [tipoCurso, setTipoCurso] = useState('');
@@ -414,6 +415,7 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
   useEffect(() => {
     setIdEstado('');
     setIdPolo('');
+    setAutoSelectFailed(false);
     if (idCurso) {
       const course = cursosCache.find(c => c.idCurso === idCurso);
       onCourseSelect(course); // Pass up to App to show details
@@ -426,7 +428,11 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
             e.nmEstado.toUpperCase() === CONFIG.ESTADO_PADRAO.toUpperCase() ||
             (e.sgEstado && e.sgEstado.toUpperCase() === CONFIG.ESTADO_PADRAO.toUpperCase())
           );
-          if (est) setIdEstado(String(est.idEstado));
+          if (est) {
+            setIdEstado(String(est.idEstado));
+          } else {
+            if (CONFIG.OCULTAR_SELECAO_POLO) setAutoSelectFailed(true);
+          }
         }
       }).catch(console.error);
     } else {
@@ -457,6 +463,7 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
             setIdPolo(String(pol.idPolo));
           } else {
             console.warn(`[LeadForm] Polo padrão "${CONFIG.POLO_PADRAO}" não encontrado na lista da API.`);
+            if (CONFIG.OCULTAR_SELECAO_POLO) setAutoSelectFailed(true);
           }
         }
       }).catch(err => console.error('[LeadForm] Erro ao buscar polos:', err));
@@ -738,7 +745,19 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
               </div>
             )}
 
-            {(!idPolo || loadingPreco || (preco && preco._fallback)) && (
+            {autoSelectFailed && (
+              <div className="mt-6 p-6 border border-red-200 bg-red-50 rounded-[24px] flex items-start gap-4 animate-in fade-in zoom-in-95 duration-500">
+                 <AlertCircle className="text-red-500 shrink-0" size={24} />
+                 <div>
+                    <h4 className="font-bold text-red-900 text-[15px]">Curso Indisponível na Unidade</h4>
+                    <p className="text-red-800 text-xs mt-1 leading-relaxed">
+                      Lamentamos, mas o curso selecionado não está disponível no polo atual. Por favor, selecione outro curso de seu interesse.
+                    </p>
+                 </div>
+              </div>
+            )}
+
+            {!autoSelectFailed && (!idPolo || loadingPreco || (preco && preco._fallback)) && (
               <button
                 disabled={!idPolo}
                 onClick={() => setStep(2)}
