@@ -64,9 +64,10 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
   const [chatError, setChatError] = useState<string | null>(null);
   const [agentName, setAgentName] = useState<string>('Consultor');
   
-  // Prompt de E-mail Recuperação
-  const [showEmailPrompt, setShowEmailPrompt] = useState(false);
-  const [promptEmail, setPromptEmail] = useState('');
+  // Prompt de Chat Direto
+  const [showDirectChatPrompt, setShowDirectChatPrompt] = useState(false);
+  const [promptNome, setPromptNome] = useState('');
+  const [promptWhatsapp, setPromptWhatsapp] = useState('');
   const [promptError, setPromptError] = useState('');
   
   // Audio Recording
@@ -209,29 +210,51 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
     if (activeChatId) {
        setShowChatModal(true);
     } else {
-       setShowEmailPrompt(true);
+       setShowDirectChatPrompt(true);
     }
   };
 
-  const handleRecoverChat = async (e: React.FormEvent) => {
+  const handleDirectChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPromptError('');
     setIsSubmitting(true);
     try {
-      const { data } = await supabase.from('leads').select('*').ilike('email', promptEmail);
+      const cleanWpp = promptWhatsapp.replace(/\D/g, '');
+      const { data } = await supabase.from('leads').select('*').ilike('whatsapp', `%${cleanWpp}%`).order('created_at', { ascending: false }).limit(1);
+      
       if (data && data.length > 0) {
          const recoveredLead = data[0];
          setDbLeadId(recoveredLead.id);
-         setLead(prev => ({ ...prev, nome: recoveredLead.nome, email: recoveredLead.email, whatsapp: recoveredLead.whatsapp }));
+         setLead(prev => ({ ...prev, nome: recoveredLead.nome, whatsapp: recoveredLead.whatsapp }));
          setIdCurso(recoveredLead.id_curso || '');
          
-         setShowEmailPrompt(false);
+         setShowDirectChatPrompt(false);
          await handleStartChat(recoveredLead.id, recoveredLead);
       } else {
-         setPromptError("E-mail não encontrado. Por favor, preencha o formulário à esquerda para iniciar seu atendimento.");
+         const { data: newLeadData, error: newLeadError } = await supabase.from('leads').insert([{
+           nome: promptNome,
+           whatsapp: promptWhatsapp,
+           contato_preferencia: 'chat',
+           status: 'novo',
+           nm_curso: 'Acesso Direto (Sem Form)',
+           utm_source: new URLSearchParams(window.location.search).get('utm_source') || 'direto',
+           utm_medium: new URLSearchParams(window.location.search).get('utm_medium') || '',
+           utm_campaign: new URLSearchParams(window.location.search).get('utm_campaign') || ''
+         }]).select().single();
+         
+         if (newLeadData && !newLeadError) {
+           setDbLeadId(newLeadData.id);
+           setLead(prev => ({ ...prev, nome: newLeadData.nome, whatsapp: newLeadData.whatsapp }));
+           
+           setShowDirectChatPrompt(false);
+           await handleStartChat(newLeadData.id, newLeadData);
+         } else {
+           setPromptError("Erro ao iniciar atendimento. Tente novamente.");
+         }
       }
     } catch(err) {
        console.error(err);
+       setPromptError("Erro de conexão.");
     } finally {
       setIsSubmitting(false);
     }
@@ -997,29 +1020,46 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
         document.body
       )}
 
-      {showEmailPrompt && createPortal(
+      {showDirectChatPrompt && createPortal(
         <div className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 duration-300">
-            <h3 className="font-black text-[#003B5C] text-xl mb-2">Recuperar Atendimento</h3>
-            <p className="text-gray-500 text-xs mb-6 font-medium">Informe o mesmo e-mail que você utilizou ao iniciar a sua solicitação.</p>
+            <h3 className="font-black text-[#003B5C] text-xl mb-2">Iniciar Atendimento</h3>
+            <p className="text-gray-500 text-xs mb-6 font-medium">Preencha rapidamente para falar com um de nossos consultores.</p>
             
-            <form onSubmit={handleRecoverChat} className="flex flex-col gap-4">
+            <form onSubmit={handleDirectChatSubmit} className="flex flex-col gap-4">
               {promptError && <div className="p-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-xs font-bold">{promptError}</div>}
               <div>
                  <input 
-                   type="email"
+                   type="text"
                    required
-                   value={promptEmail}
-                   onChange={e => setPromptEmail(e.target.value)}
+                   value={promptNome}
+                   onChange={e => setPromptNome(e.target.value)}
                    className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-[#003B5C] focus:ring-2 focus:ring-[#003B5C]/10 transition-all font-medium text-sm"
-                   placeholder="seu@email.com"
+                   placeholder="Seu nome"
+                 />
+              </div>
+              <div>
+                 <input 
+                   type="tel"
+                   required
+                   value={promptWhatsapp}
+                   onChange={e => {
+                     let val = e.target.value.replace(/\D/g, '');
+                     if (val.length > 11) val = val.slice(0, 11);
+                     if (val.length > 2) val = `(${val.slice(0, 2)}) ${val.slice(2)}`;
+                     if (val.length > 10) val = `${val.slice(0, 10)}-${val.slice(10)}`;
+                     setPromptWhatsapp(val);
+                   }}
+                   className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-[#003B5C] focus:ring-2 focus:ring-[#003B5C]/10 transition-all font-medium text-sm"
+                   placeholder="Seu WhatsApp (com DDD)"
+                   maxLength={15}
                  />
               </div>
               <div className="flex justify-end gap-2 mt-2">
-                 <button type="button" onClick={() => setShowEmailPrompt(false)} className="px-4 py-2 rounded-xl text-sm font-bold text-gray-500 hover:bg-slate-100 transition-colors">Voltar</button>
+                 <button type="button" onClick={() => setShowDirectChatPrompt(false)} className="px-4 py-2 rounded-xl text-sm font-bold text-gray-500 hover:bg-slate-100 transition-colors">Voltar</button>
                  <button type="submit" disabled={isSubmitting} className="px-4 py-2 rounded-xl text-sm font-bold bg-[#fdb913] text-[#003B5C] hover:scale-105 transition-transform flex items-center gap-2">
                    {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />} 
-                   Acessar
+                   Conversar
                  </button>
               </div>
             </form>
