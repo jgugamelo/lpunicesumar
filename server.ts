@@ -260,6 +260,9 @@ async function startServer() {
         const spreIdConteudo = toEspreId(idCurso as string);
         const idsToTryConteudo = [idCurso];
         if (spreIdConteudo) idsToTryConteudo.push(spreIdConteudo);
+        
+        let fallbackObj: any = null;
+        let fallbackIsSpre = false;
 
         for (const tryId of idsToTryConteudo) {
           try {
@@ -273,6 +276,11 @@ async function startServer() {
                 ? (d.find(x => x.cdUrlCurso) || d[0])
                 : d;
               if (courseObj && typeof courseObj === 'object' && Object.keys(courseObj).length > 0) {
+                if (!fallbackObj) {
+                  fallbackObj = courseObj;
+                  fallbackIsSpre = (tryId === spreIdConteudo);
+                }
+
                 // Se a resposta retornou sucesso mas não tem nenhuma parte de descrição, provavelmente é um placeholder EGRAD que precisa cair no ESPRE.
                 const hasDescription = !!(courseObj.dsDescricao || courseObj.dsApresentacao || courseObj.dsEmenta || courseObj.ementa || courseObj.apresentacao);
                 
@@ -292,6 +300,14 @@ async function startServer() {
           } catch (e) {
             console.log(e);
           }
+        }
+
+        if (Object.keys(dCurso).length === 0 && fallbackObj) {
+           dCurso = fallbackObj;
+           dCurso._isSemipresencial = fallbackIsSpre;
+           if (fallbackObj.cdUrlCurso && !urlSlugParam) {
+             urlSlug = fallbackObj.cdUrlCurso;
+           }
         }
 
         const apiDescription =
