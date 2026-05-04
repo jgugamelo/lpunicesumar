@@ -163,8 +163,8 @@ export function AdminDashboard() {
       }
       setOnlineConsultantNames(names);
     }).subscribe(async (status) => {
-      if (status === 'SUBSCRIBED' && userRole === 'consultor' && userName) {
-        await channel.track({ online: true, role: 'consultor', nome: userName, avatar_url: userAvatar });
+      if (status === 'SUBSCRIBED' && userRole && userName) {
+        await channel.track({ online: true, role: userRole, nome: userName, avatar_url: userAvatar });
       }
     });
     
