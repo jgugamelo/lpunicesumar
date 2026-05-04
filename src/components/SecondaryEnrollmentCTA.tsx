@@ -53,7 +53,7 @@ export function SecondaryEnrollmentCTA({
   if (!preco || preco._fallback) return null;
 
   const nmCurso = selectedCourse.nmCurso;
-  const isStep2Valid = leadData.nome.length > 2 && leadData.whatsapp.replace(/\D/g, '').length >= 10 && /\S+@\S+\.\S+/.test(leadData.email);
+  const isStep2Valid = leadData.nome.length > 2 && leadData.whatsapp.replace(/\D/g, '').length >= 10;
 
   const maskPhone = (v: string) => {
     let r = v.replace(/\D/g, '').slice(0, 11);
@@ -186,9 +186,9 @@ export function SecondaryEnrollmentCTA({
                 <p className="text-gray-500 font-medium">Preencha abaixo para garantir a condição exclusiva no RJ.</p>
               </div>
 
-              <div className="max-w-xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="max-w-xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                 <div className="space-y-1.5 text-left">
-                  <label className="block text-[11px] font-bold text-[#004b8d] uppercase tracking-wider ml-1">Nome completo</label>
+                  <label className="block text-[11px] font-bold text-[#004b8d] uppercase tracking-wider ml-1">Nome completo *</label>
                   <input
                     type="text" value={leadData.nome} onChange={e => setLeadData({ ...leadData, nome: e.target.value })}
                     placeholder="Seu nome"
@@ -196,22 +196,13 @@ export function SecondaryEnrollmentCTA({
                   />
                 </div>
                 <div className="space-y-1.5 text-left">
-                  <label className="block text-[11px] font-bold text-[#004b8d] uppercase tracking-wider ml-1">WhatsApp</label>
+                  <label className="block text-[11px] font-bold text-[#004b8d] uppercase tracking-wider ml-1">WhatsApp *</label>
                   <input
                     type="tel" value={leadData.whatsapp} onChange={e => setLeadData({ ...leadData, whatsapp: maskPhone(e.target.value) })}
                     placeholder="(00) 00000-0000"
                     className="w-full p-4 bg-slate-50 border border-gray-200 rounded-xl text-[14px] font-medium outline-none focus:border-[#fdb913] focus:ring-4 focus:ring-[#fdb913]/10 transition-all"
                   />
                 </div>
-              </div>
-              
-              <div className="max-w-xl mx-auto space-y-1.5 text-left mb-8">
-                <label className="block text-[11px] font-bold text-[#004b8d] uppercase tracking-wider ml-1">E-mail</label>
-                <input
-                  type="email" value={leadData.email} onChange={e => setLeadData({ ...leadData, email: e.target.value })}
-                  placeholder="exemplo@email.com"
-                  className="w-full p-4 bg-slate-50 border border-gray-200 rounded-xl text-[14px] font-medium outline-none focus:border-[#fdb913] focus:ring-4 focus:ring-[#fdb913]/10 transition-all"
-                />
               </div>
 
               <div className="max-w-xl mx-auto">
