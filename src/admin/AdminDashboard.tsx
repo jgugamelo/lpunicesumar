@@ -722,8 +722,13 @@ export function AdminDashboard() {
   const handleLogout = async () => {
     if (presenceChannel) {
       await supabase.removeChannel(presenceChannel);
+      setPresenceChannel(null);
     }
     await supabase.auth.signOut();
+    setConsultantId(null);
+    setUserRole(null);
+    setUserName('');
+    setUserAvatar(null);
   };
 
   if (loading) {
