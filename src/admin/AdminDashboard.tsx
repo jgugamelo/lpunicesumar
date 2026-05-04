@@ -11,6 +11,7 @@ export function AdminDashboard() {
   const [userRole, setUserRole] = useState<'admin' | 'consultor' | null>(null);
   const [userName, setUserName] = useState('');
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const [presenceChannel, setPresenceChannel] = useState<any>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [consultantId, setConsultantId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -143,17 +144,28 @@ export function AdminDashboard() {
       if (data.role === 'consultor') setActiveTab('chat');
     }
     setLoading(false);
-    
-    // Broadcast Presence se for consultor atendendo chats
-    if (data?.role === 'consultor') {
-      const channel = supabase.channel('consultants_status', {
-        config: { presence: { key: userId } },
-      });
-      channel.on('presence', { event: 'sync' }, () => {}).subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') await channel.track({ online: true, role: 'consultor', nome: data.nome, avatar_url: data.avatar_url });
-      });
-    }
   };
+
+  // Dedicated Presence tracking with cleanup
+  useEffect(() => {
+    if (userRole === 'consultor' && userName) {
+      const channel = supabase.channel('consultants_status', {
+        config: { presence: { key: consultantId || 'anonymous' } },
+      });
+      
+      channel.on('presence', { event: 'sync' }, () => {}).subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ online: true, role: 'consultor', nome: userName, avatar_url: userAvatar });
+        }
+      });
+      
+      setPresenceChannel(channel);
+      
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [userRole, consultantId, userName, userAvatar]);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -172,11 +184,6 @@ export function AdminDashboard() {
       
       await supabase.from('consultants').update({ avatar_url: url }).eq('id', consultantId);
       setUserAvatar(url);
-      
-      // Atualiza o canal de presença imediatamente para refletir na landing page
-      const channel = supabase.channel('consultants_status');
-      await channel.track({ online: true, role: 'consultor', nome: userName, avatar_url: url });
-
       alert('Foto de perfil atualizada com sucesso! A imagem já foi atualizada no site.');
     } else {
       alert('Erro ao enviar imagem. Verifique se o bucket "avatars" foi criado e se tem permissões públicas.');
@@ -712,7 +719,12 @@ export function AdminDashboard() {
     setLoading(false);
   };
 
-  const handleLogout = () => supabase.auth.signOut();
+  const handleLogout = async () => {
+    if (presenceChannel) {
+      await supabase.removeChannel(presenceChannel);
+    }
+    await supabase.auth.signOut();
+  };
 
   if (loading) {
     return (

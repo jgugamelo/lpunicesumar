@@ -428,7 +428,7 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
              });
           }
         }
-        setOnlineConsultants(count);
+        setOnlineConsultants(consultants.length);
         setOnlineConsultantsData(consultants);
       })
       .subscribe();
