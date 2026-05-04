@@ -12,6 +12,7 @@ export function AdminDashboard() {
   const [userName, setUserName] = useState('');
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [presenceChannel, setPresenceChannel] = useState<any>(null);
+  const [onlineConsultantNames, setOnlineConsultantNames] = useState<Set<string>>(new Set());
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [consultantId, setConsultantId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -148,23 +149,30 @@ export function AdminDashboard() {
 
   // Dedicated Presence tracking with cleanup
   useEffect(() => {
-    if (userRole === 'consultor' && userName) {
-      const channel = supabase.channel('consultants_status', {
-        config: { presence: { key: consultantId || 'anonymous' } },
-      });
-      
-      channel.on('presence', { event: 'sync' }, () => {}).subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({ online: true, role: 'consultor', nome: userName, avatar_url: userAvatar });
-        }
-      });
-      
-      setPresenceChannel(channel);
-      
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
+    const channel = supabase.channel('consultants_status', {
+      config: { presence: { key: consultantId || 'viewer' } },
+    });
+    
+    channel.on('presence', { event: 'sync' }, () => {
+      const state = channel.presenceState();
+      const names = new Set<string>();
+      for (const key in state) {
+        (state[key] as any[]).forEach(p => {
+          if (p.nome) names.add(p.nome);
+        });
+      }
+      setOnlineConsultantNames(names);
+    }).subscribe(async (status) => {
+      if (status === 'SUBSCRIBED' && userRole === 'consultor' && userName) {
+        await channel.track({ online: true, role: 'consultor', nome: userName, avatar_url: userAvatar });
+      }
+    });
+    
+    setPresenceChannel(channel);
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [userRole, consultantId, userName, userAvatar]);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1703,10 +1711,10 @@ export function AdminDashboard() {
                          </span>
                        </td>
                        <td className="px-8 py-4">
-                         <div className="flex items-center gap-2">
-                           <div className={`w-2 h-2 rounded-full ${member.is_online ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}></div>
-                           <span className="text-xs text-gray-500 font-medium">{member.is_online ? 'Disponível' : 'Offline'}</span>
-                         </div>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${onlineConsultantNames.has(member.nome) ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}></div>
+                            <span className="text-xs text-gray-500 font-medium">{onlineConsultantNames.has(member.nome) ? 'Disponível' : 'Offline'}</span>
+                          </div>
                        </td>
                        <td className="px-8 py-4">
                          {member.user_id !== session.user.id && (
