@@ -10,6 +10,8 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<'admin' | 'consultor' | null>(null);
   const [userName, setUserName] = useState('');
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [consultantId, setConsultantId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   
@@ -132,11 +134,12 @@ export function AdminDashboard() {
   }, []);
 
   const fetchUserRole = async (userId: string) => {
-    const { data, error } = await supabase.from('consultants').select('id, role, nome').eq('user_id', userId).single();
+    const { data, error } = await supabase.from('consultants').select('id, role, nome, avatar_url').eq('user_id', userId).single();
     if (!error && data) {
       setConsultantId(data.id);
       setUserRole(data.role as any);
       setUserName(data.nome || '');
+      setUserAvatar(data.avatar_url || null);
       if (data.role === 'consultor') setActiveTab('chat');
     }
     setLoading(false);
@@ -147,9 +150,33 @@ export function AdminDashboard() {
         config: { presence: { key: userId } },
       });
       channel.on('presence', { event: 'sync' }, () => {}).subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') await channel.track({ online: true, role: 'consultor' });
+        if (status === 'SUBSCRIBED') await channel.track({ online: true, role: 'consultor', nome: data.nome, avatar_url: data.avatar_url });
       });
     }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !consultantId) return;
+
+    setIsUploadingAvatar(true);
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${consultantId}_${Date.now()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file);
+    
+    if (!uploadError) {
+      const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const url = publicData.publicUrl;
+      
+      await supabase.from('consultants').update({ avatar_url: url }).eq('id', consultantId);
+      setUserAvatar(url);
+      alert('Foto de perfil atualizada com sucesso! Recarregue a página caso a imagem no chat não atualize de imediato.');
+    } else {
+      alert('Erro ao enviar imagem. Verifique se o bucket "avatars" foi criado e se tem permissões públicas.');
+    }
+    setIsUploadingAvatar(false);
   };
 
   const startRecording = async () => {
@@ -747,6 +774,12 @@ export function AdminDashboard() {
             <MessageCircle size={20} /> Bate-Papo Local
             {userRole === 'consultor' && <span className="absolute right-4 bg-[#fdb913] text-[#001D2D] text-[10px] px-2 py-0.5 rounded-full font-black">Online</span>}
           </button>
+          
+          <div className="mt-4 border-t border-white/10 pt-4">
+            <button onClick={() => setActiveTab('profile')} className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors w-full ${activeTab === 'profile' ? 'bg-white/10 text-white' : 'hover:bg-white/5 text-white/50'}`}>
+              <Settings size={20} /> Meu Perfil
+            </button>
+          </div>
         </div>
         <div className="p-6 border-t border-white/10 mt-auto bg-[#00141f]">
           <div className="flex items-center justify-between">
@@ -764,6 +797,34 @@ export function AdminDashboard() {
       {/* Main Content Pane */}
       <div className={`flex-1 overflow-auto flex flex-col ${activeTab === 'chat' ? 'p-6 pb-0 md:p-10 md:pb-0' : 'p-6 md:p-10'}`}>
         
+        {activeTab === 'profile' && (
+           <div className="animate-in fade-in duration-300">
+             <h2 className="text-3xl font-black text-[#003B5C] tracking-tight mb-8">Meu Perfil</h2>
+             <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm max-w-xl">
+               <h3 className="font-bold text-gray-800 mb-4">Foto de Perfil (Avatar)</h3>
+               <p className="text-sm text-gray-500 mb-6">Esta foto será exibida no widget de chat na página principal quando você estiver online, gerando mais confiança para o visitante.</p>
+               
+               <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+                 <div className="w-24 h-24 rounded-full bg-slate-100 overflow-hidden border-4 border-white shadow-lg flex-shrink-0 flex items-center justify-center text-slate-300">
+                   {userAvatar ? (
+                     <img src={userAvatar} alt="Avatar" className="w-full h-full object-cover" />
+                   ) : (
+                     <Users size={32} />
+                   )}
+                 </div>
+                 
+                 <div className="text-center md:text-left flex flex-col items-center md:items-start">
+                   <input type="file" accept="image/*" id="avatar-upload" className="hidden" onChange={handleAvatarUpload} />
+                   <label htmlFor="avatar-upload" className="bg-[#003B5C] text-white px-5 py-2.5 rounded-xl font-bold text-sm cursor-pointer hover:bg-[#002b44] transition-colors inline-flex items-center gap-2 mb-2">
+                     {isUploadingAvatar ? <><Loader2 className="animate-spin" size={18} /> Enviando...</> : 'Escolher Nova Foto'}
+                   </label>
+                   <p className="text-xs text-gray-400 max-w-[250px]">Formato JPG ou PNG. <br/> Tamanho recomendado: 200x200px.</p>
+                 </div>
+               </div>
+             </div>
+           </div>
+        )}
+
         {activeTab === 'overview' && userRole === 'admin' && (
           <div className="animate-in fade-in duration-300">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">

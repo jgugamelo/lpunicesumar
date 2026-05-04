@@ -125,3 +125,7 @@ ALTER TABLE public.chats ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT fals
 
 -- 4. Gravar a URL completa nas visitas
 ALTER TABLE public.page_visits ADD COLUMN IF NOT EXISTS full_url TEXT;
+
+-- 5. Armazenar o link da imagem (avatar) do consultor
+ALTER TABLE public.consultants ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+
