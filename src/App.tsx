@@ -271,7 +271,7 @@ export default function App() {
 
       {/* Floating WhatsApp Button (Rota de Fuga) */}
       <a 
-        href={`https://wa.me/554499118811?text=${encodeURIComponent("Olá! Vim pelo site da UniCesumar e gostaria de tirar umas dúvidas sobre as bolsas e os cursos disponíveis.")}`}
+        href={`https://wa.me/5521970913117?text=${encodeURIComponent("Olá! Vim pelo site da UniCesumar e gostaria de tirar umas dúvidas sobre as bolsas e os cursos disponíveis.")}`}
         target="_blank"
         rel="noreferrer"
         className="fixed bottom-[100px] right-6 z-[999] bg-[#25D366] text-white w-16 h-16 rounded-full shadow-[0_10px_30px_-5px_rgba(37,211,102,0.6)] hover:scale-110 hover:shadow-[0_15px_40px_-5px_rgba(37,211,102,0.8)] transition-all flex items-center justify-center group"
