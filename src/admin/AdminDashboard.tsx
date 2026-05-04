@@ -13,6 +13,7 @@ export function AdminDashboard() {
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [presenceChannel, setPresenceChannel] = useState<any>(null);
   const [onlineConsultantNames, setOnlineConsultantNames] = useState<Set<string>>(new Set());
+  const [isAdminOnline, setIsAdminOnline] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [consultantId, setConsultantId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -164,7 +165,11 @@ export function AdminDashboard() {
       setOnlineConsultantNames(names);
     }).subscribe(async (status) => {
       if (status === 'SUBSCRIBED' && userRole && userName) {
-        await channel.track({ online: true, role: userRole, nome: userName, avatar_url: userAvatar });
+        // Consultores ficam online automático, Admins escolhem via toggle
+        const shouldBeOnline = userRole === 'consultor' || (userRole === 'admin' && isAdminOnline);
+        if (shouldBeOnline) {
+          await channel.track({ online: true, role: userRole, nome: userName, avatar_url: userAvatar });
+        }
       }
     });
     
@@ -803,7 +808,23 @@ export function AdminDashboard() {
           <button onClick={() => setActiveTab('chat')} className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors relative ${activeTab === 'chat' ? 'bg-[#fdb913]/20 text-[#fdb913]' : 'hover:bg-white/5 text-white/50'}`}>
             <MessageCircle size={20} /> Bate-Papo Local
             {userRole === 'consultor' && <span className="absolute right-4 bg-[#fdb913] text-[#001D2D] text-[10px] px-2 py-0.5 rounded-full font-black">Online</span>}
+            {userRole === 'admin' && isAdminOnline && <span className="absolute right-4 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black">Visível</span>}
           </button>
+          
+          {userRole === 'admin' && (
+            <div className="px-4 py-3 mx-2 mt-1 flex items-center justify-between bg-white/5 rounded-2xl border border-white/10 group hover:bg-white/10 transition-all">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#fdb913]">Atendimento</span>
+                <span className="text-[11px] font-bold text-white/60">{isAdminOnline ? 'Disponível no Site' : 'Invisível'}</span>
+              </div>
+              <button 
+                onClick={() => setIsAdminOnline(!isAdminOnline)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 focus:outline-none ${isAdminOnline ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-white/20'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform duration-300 ${isAdminOnline ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+          )}
           
           <div className="mt-4 border-t border-white/10 pt-4">
             <button onClick={() => setActiveTab('profile')} className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors w-full ${activeTab === 'profile' ? 'bg-white/10 text-white' : 'hover:bg-white/5 text-white/50'}`}>
