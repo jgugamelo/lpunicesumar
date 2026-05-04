@@ -514,7 +514,7 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
     return r;
   };
 
-  const isStep2Valid = lead.nome.length > 2 && lead.whatsapp.replace(/\D/g, '').length >= 10 && /\S+@\S+\.\S+/.test(lead.email);
+  const isStep2Valid = lead.nome.length > 2 && lead.whatsapp.replace(/\D/g, '').length >= 10;
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -707,15 +707,24 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
                   </div>
                 </div>
 
-                <p className="text-[#003B5C] font-bold text-[13px] text-center mb-5 leading-relaxed px-2">
-                  Possuímos algumas vagas com condições diferenciadas para as demais mensalidades, consulte e garanta essa oportunidade!
-                </p>
+                <div className="bg-red-50 border border-red-100 rounded-lg p-3 mb-5 text-center shadow-sm">
+                  <p className="text-red-700 font-black text-[14px] leading-tight">
+                    🔥 Temos algumas bolsas com +10% de desconto extra!
+                  </p>
+                  <p className="text-red-600 font-medium text-[11px] mt-1">Fale com o consultor agora mesmo para garantir.</p>
+                </div>
                 <button
                   onClick={() => setStep(2)}
                   className="w-full bg-[#fdb913] border-2 border-[#fdb913] text-[#003B5C] font-[900] text-[16px] uppercase tracking-widest py-4 rounded-xl hover:bg-yellow-400 hover:border-yellow-400 hover:shadow-[0_10px_20px_-10px_rgba(253,185,19,0.5)] hover:-translate-y-0.5 transition-all flex justify-center items-center"
                 >
                   Eu quero!
                 </button>
+
+                <div className="mt-5 text-center">
+                  <a href="#course-details" onClick={(e) => { e.preventDefault(); document.getElementById('course-details')?.scrollIntoView({ behavior: 'smooth' }); }} className="inline-flex items-center gap-1.5 text-[#003B5C] hover:text-[#004b8d] text-[13px] font-bold group">
+                    Ler tudo sobre este curso <ArrowRight size={14} className="group-hover:translate-y-1 rotate-90 transition-transform" />
+                  </a>
+                </div>
               </div>
             )}
 
@@ -746,66 +755,40 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
         {/* Step 2 */}
         {step === 2 && (
           <div className="space-y-4 animate-in fade-in slide-in-from-right-8 duration-500">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-center mb-2">
+               <h4 className="font-black text-[#003B5C] text-[16px]">Falta pouco!</h4>
+               <p className="text-gray-500 text-[13px] font-medium mt-1">Preencha os campos abaixo para liberar seu atendimento imediato no WhatsApp.</p>
+            </div>
+            
+            <div className="space-y-3">
               <div className="space-y-1.5">
-                <label className="block text-[12px] font-[600] text-[#004b8d] uppercase mb-1.5">Nome completo <span className="text-red-500">*</span></label>
+                <label className="block text-[12px] font-[600] text-[#004b8d] uppercase mb-1.5">Como podemos te chamar? <span className="text-red-500">*</span></label>
                 <input
                   type="text" value={lead.nome} onChange={e => setLead({ ...lead, nome: e.target.value })}
                   placeholder="Seu nome"
-                  className="w-full p-[12px] bg-[#fafbfc] border border-[#d1d9e0] rounded-[6px] text-[14px] outline-none focus:border-[#004b8d] transition-colors"
+                  className="w-full p-[14px] bg-[#fafbfc] border border-[#d1d9e0] rounded-[10px] text-[15px] outline-none focus:border-[#004b8d] transition-colors"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="block text-[12px] font-[600] text-[#004b8d] uppercase mb-1.5">WhatsApp <span className="text-red-500">*</span></label>
+                <label className="block text-[12px] font-[600] text-[#004b8d] uppercase mb-1.5">Seu WhatsApp (com DDD) <span className="text-red-500">*</span></label>
                 <input
                   type="tel" value={lead.whatsapp} onChange={e => setLead({ ...lead, whatsapp: maskPhone(e.target.value) })}
                   placeholder="(00) 00000-0000"
-                  className="w-full p-[12px] bg-[#fafbfc] border border-[#d1d9e0] rounded-[6px] text-[14px] outline-none focus:border-[#004b8d] transition-colors"
+                  className="w-full p-[14px] bg-[#fafbfc] border border-[#d1d9e0] rounded-[10px] text-[15px] outline-none focus:border-[#004b8d] transition-colors"
                 />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="block text-[12px] font-[600] text-[#004b8d] uppercase mb-1.5">E-mail <span className="text-red-500">*</span></label>
-              <input
-                type="email" value={lead.email} onChange={e => setLead({ ...lead, email: e.target.value })}
-                placeholder="seu@email.com"
-                className="w-full p-[12px] bg-[#fafbfc] border border-[#d1d9e0] rounded-[6px] text-[14px] outline-none focus:border-[#004b8d] transition-colors"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="block text-[12px] font-[600] text-[#004b8d] uppercase mb-1.5">Melhor horário para contato</label>
-              <select
-                value={lead.horario} onChange={e => setLead({ ...lead, horario: e.target.value })}
-                className="w-full p-[12px] bg-[#fafbfc] border border-[#d1d9e0] rounded-[6px] text-[14px] outline-none focus:border-[#004b8d] transition-colors"
-              >
-                <option value="">Sem preferência</option>
-                <option value="manha">Manhã (8h–12h)</option>
-                <option value="tarde">Tarde (12h–18h)</option>
-                <option value="noite">Noite (18h–22h)</option>
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="block text-[12px] font-[600] text-[#004b8d] uppercase mb-1.5">Mensagem ou dúvida (opcional)</label>
-              <textarea
-                rows={2} value={lead.observacao} onChange={e => setLead({ ...lead, observacao: e.target.value })}
-                placeholder="Ex. Eu quero saber sobre Bolsas, Prouni..."
-                className="w-full p-[12px] bg-[#fafbfc] border border-[#d1d9e0] rounded-[6px] text-[14px] outline-none focus:border-[#004b8d] transition-colors resize-none"
-              />
-            </div>
-
-            <div className="flex flex-col md:flex-row items-center gap-4 mt-6">
-              <button onClick={() => setStep(1)} className="w-full md:w-auto px-6 py-4 text-[#666666] hover:text-[#004b8d] font-bold flex items-center justify-center gap-2 transition-colors">
-                <ArrowLeft size={18} /> Voltar
-              </button>
+            <div className="flex flex-col items-center gap-3 mt-6">
               <button
                 disabled={!isStep2Valid || isSubmitting}
                 onClick={handleSubmit}
-                className="flex-1 w-full bg-[#fdb913] text-[#003B5C] font-[900] text-[16px] uppercase tracking-wider py-4 rounded-xl hover:bg-yellow-400 hover:shadow-lg hover:-translate-y-0.5 transition-all flex justify-center items-center gap-2 disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none"
+                className="w-full bg-[#25D366] text-white font-[900] text-[16px] uppercase tracking-wider py-4 rounded-xl hover:bg-[#20bd5a] hover:shadow-lg hover:-translate-y-0.5 transition-all flex justify-center items-center gap-2 disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none"
               >
-                {isSubmitting ? <><Loader2 size={20} className="animate-spin" /> Registrando...</> : 'Enviar Meus Dados'}
+                {isSubmitting ? <><Loader2 size={20} className="animate-spin" /> Conectando...</> : <><MessageCircle size={22} /> Falar no WhatsApp Agora</>}
+              </button>
+              <button onClick={() => setStep(1)} className="text-[#666666] hover:text-[#004b8d] text-[13px] font-bold mt-2">
+                Voltar e mudar curso
               </button>
             </div>
           </div>
