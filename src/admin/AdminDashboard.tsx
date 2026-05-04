@@ -172,7 +172,12 @@ export function AdminDashboard() {
       
       await supabase.from('consultants').update({ avatar_url: url }).eq('id', consultantId);
       setUserAvatar(url);
-      alert('Foto de perfil atualizada com sucesso! Recarregue a página caso a imagem no chat não atualize de imediato.');
+      
+      // Atualiza o canal de presença imediatamente para refletir na landing page
+      const channel = supabase.channel('consultants_status');
+      await channel.track({ online: true, role: 'consultor', nome: userName, avatar_url: url });
+
+      alert('Foto de perfil atualizada com sucesso! A imagem já foi atualizada no site.');
     } else {
       alert('Erro ao enviar imagem. Verifique se o bucket "avatars" foi criado e se tem permissões públicas.');
     }

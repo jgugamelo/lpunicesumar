@@ -289,9 +289,9 @@ export default function App() {
             utm_campaign: new URLSearchParams(window.location.search).get('utm_campaign') || ''
           }]).then();
         }}
-        className="fixed bottom-[100px] right-6 z-[999] bg-[#25D366] text-white w-16 h-16 rounded-full shadow-[0_10px_30px_-5px_rgba(37,211,102,0.6)] hover:scale-110 hover:shadow-[0_15px_40px_-5px_rgba(37,211,102,0.8)] transition-all flex items-center justify-center group"
+        className="fixed bottom-6 left-6 z-[999] bg-[#25D366] text-white w-16 h-16 rounded-full shadow-[0_10px_30px_-5px_rgba(37,211,102,0.6)] hover:scale-110 hover:shadow-[0_15px_40px_-5px_rgba(37,211,102,0.8)] transition-all flex items-center justify-center group"
       >
-        <span className="absolute right-full mr-4 bg-white text-gray-800 text-[13px] font-bold px-4 py-2 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+        <span className="absolute left-full ml-4 bg-white text-gray-800 text-[13px] font-bold px-4 py-2 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
           Dúvidas? Fale conosco!
         </span>
         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">

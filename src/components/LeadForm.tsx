@@ -1030,7 +1030,7 @@ export function LeadForm({ onCourseSelect, onLeadSuccess, onPricingUpdate, leadD
 
       {/* Widget de Chat Humanizado Flutuante */}
       {createPortal(
-        <div className="fixed bottom-6 right-[100px] z-[4000] flex flex-col items-end gap-3 pointer-events-none">
+        <div className="fixed bottom-6 right-6 z-[4000] flex flex-col items-end gap-3 pointer-events-none">
           {/* Card Flutuante */}
           {onlineConsultants > 0 && (
             <div className="bg-white px-5 py-4 rounded-3xl shadow-[0_10px_40px_-10px_rgba(0,59,92,0.2)] border border-gray-100 flex flex-col gap-3 pointer-events-auto origin-bottom-right animate-in fade-in zoom-in-95 duration-500">

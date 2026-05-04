@@ -129,3 +129,22 @@ ALTER TABLE public.page_visits ADD COLUMN IF NOT EXISTS full_url TEXT;
 -- 5. Armazenar o link da imagem (avatar) do consultor
 ALTER TABLE public.consultants ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 
+-- 6. Criação do Bucket de Storage para os Avatares (com permissões)
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('avatars', 'avatars', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Políticas de segurança para o bucket 'avatars'
+CREATE POLICY "Avatar images are publicly accessible."
+ON storage.objects FOR SELECT
+USING ( bucket_id = 'avatars' );
+
+CREATE POLICY "Anyone can upload an avatar."
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK ( bucket_id = 'avatars' );
+
+CREATE POLICY "Anyone can update their avatar."
+ON storage.objects FOR UPDATE
+TO authenticated
+WITH CHECK ( bucket_id = 'avatars' );
