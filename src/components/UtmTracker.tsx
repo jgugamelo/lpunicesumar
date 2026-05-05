@@ -14,6 +14,7 @@ export function UtmTracker() {
           utm_source: searchParams.get('utm_source') || 'direto',
           utm_medium: searchParams.get('utm_medium') || '',
           utm_campaign: searchParams.get('utm_campaign') || '',
+          utm_content: searchParams.get('utm_content') || '',
           path: window.location.pathname,
           full_url: window.location.href
         };

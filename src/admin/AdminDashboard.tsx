@@ -479,7 +479,7 @@ export function AdminDashboard() {
         let qLeads = supabase.from('leads').select('*', { count: 'exact', head: true });
         let qVisitsData = supabase.from('page_visits').select('*').order('created_at', { ascending: false }).limit(10);
         let qChats = supabase.from('chats').select('consultants(nome)');
-        let qLeadsAll = supabase.from('leads').select('contato_preferencia, utm_source, utm_medium, utm_campaign');
+        let qLeadsAll = supabase.from('leads').select('contato_preferencia, utm_source, utm_medium, utm_campaign, utm_content');
         let qGroupedVisits = supabase.from('page_visits').select('utm_source, utm_medium, utm_campaign');
 
         if (dateQueryStart) {
@@ -637,7 +637,7 @@ export function AdminDashboard() {
       return;
     }
 
-    const headers = ["Data", "Hora", "Nome", "WhatsApp", "Email", "Curso", "Polo", "Origem", "Preferencia_Contato", "Observacao"];
+    const headers = ["Data", "Hora", "Nome", "WhatsApp", "Email", "Curso", "Polo", "Origem", "Conteudo", "Preferencia_Contato", "Observacao"];
     const rows = filteredLeads.map(l => [
        new Date(l.created_at).toLocaleDateString('pt-BR'),
        new Date(l.created_at).toLocaleTimeString('pt-BR'),
@@ -647,6 +647,7 @@ export function AdminDashboard() {
        `"${l.nm_curso || ''}"`,
        `"${l.nm_polo || ''}"`,
        `"${l.utm_source || ''}"`,
+       `"${l.utm_content || ''}"`,
        `"${l.contato_preferencia || ''}"`,
        `"${(l.observacao || '').replace(/\n/g, ' ')}"`
     ]);
@@ -1153,7 +1154,7 @@ export function AdminDashboard() {
                      <th className="px-6 py-4 font-black">Data/Hora</th>
                      <th className="px-6 py-4 font-black">Lead</th>
                      <th className="px-6 py-4 font-black">Curso Escolhido</th>
-                     <th className="px-6 py-4 font-black">Origem</th>
+                     <th className="px-6 py-4 font-black text-center">Origem / Conteúdo</th>
                      <th className="px-6 py-4 font-black">Mensagem</th>
                    </tr>
                  </thead>
@@ -1173,11 +1174,18 @@ export function AdminDashboard() {
                          <div className="text-xs font-black text-[#003B5C] uppercase">{l.nm_curso}</div>
                          <div className="text-[10px] text-gray-500 font-bold uppercase">{l.nm_polo}</div>
                        </td>
-                       <td className="px-6 py-4">
-                         <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-black text-[9px] uppercase">
-                           {l.utm_source || 'Direto'}
-                         </span>
-                       </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col items-center gap-1.5">
+                            <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded font-black text-[9px] uppercase w-fit">
+                              {l.utm_source || 'Direto'}
+                            </span>
+                            {l.utm_content && (
+                              <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded font-bold text-[8px] uppercase w-fit border border-blue-100/50">
+                                {l.utm_content}
+                              </span>
+                            )}
+                          </div>
+                        </td>
                        <td className="px-6 py-4 text-xs text-gray-600 italic">
                          {l.observacao || 'Sem observações'}
                        </td>

@@ -286,7 +286,8 @@ export default function App() {
             nm_polo: pricingData?.polo?.nmPolo || 'N/A',
             utm_source: new URLSearchParams(window.location.search).get('utm_source') || 'direto',
             utm_medium: new URLSearchParams(window.location.search).get('utm_medium') || '',
-            utm_campaign: new URLSearchParams(window.location.search).get('utm_campaign') || ''
+            utm_campaign: new URLSearchParams(window.location.search).get('utm_campaign') || '',
+            utm_content: new URLSearchParams(window.location.search).get('utm_content') || ''
           }]).then();
         }}
         className="fixed bottom-6 left-6 z-[999] bg-[#25D366] text-white w-16 h-16 rounded-full shadow-[0_10px_30px_-5px_rgba(37,211,102,0.6)] hover:scale-110 hover:shadow-[0_15px_40px_-5px_rgba(37,211,102,0.8)] transition-all flex items-center justify-center group"
