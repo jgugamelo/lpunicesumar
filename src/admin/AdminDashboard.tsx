@@ -538,10 +538,13 @@ export function AdminDashboard() {
 
   // Carregar Base de Leads
   useEffect(() => {
-    if (activeTab === 'leads' && userRole === 'admin') {
-      supabase.from('leads').select('*').order('created_at', { ascending: false }).then(({data}) => setLeads(data || []));
+    if (activeTab === 'leads') {
+      supabase.from('leads')
+        .select('*, consultants:assigned_consultant_id(nome)')
+        .order('created_at', { ascending: false })
+        .then(({data}) => setLeads(data || []));
     }
-  }, [activeTab, userRole]);
+  }, [activeTab]);
 
   useEffect(() => {
     if ((activeTab === 'team' || activeTab === 'chat') && userRole === 'admin') {
@@ -590,28 +593,52 @@ export function AdminDashboard() {
         return;
       }
       
-      // Atualiza em tempo real nas listas
       setAdminChats(prev => prev.map(chat => {
         if (chat.lead_id !== leadId) return chat;
         const currentLeads = Array.isArray(chat.leads) ? chat.leads : [chat.leads];
-        return { 
-          ...chat, 
-          leads: currentLeads.map((l: any) => ({ ...l, nm_polo: newPolo })) 
-        };
+        return { ...chat, leads: currentLeads.map((l: any) => ({ ...l, nm_polo: newPolo })) };
       }));
       setLeads(prev => prev.map(l => l.id === leadId ? { ...l, nm_polo: newPolo } : l));
-
-      // Atualiza o chat selecionado
+      
       if (selectedAdminChat?.lead_id === leadId) {
         const currentLeads = Array.isArray(selectedAdminChat.leads) ? selectedAdminChat.leads : [selectedAdminChat.leads];
-        setSelectedAdminChat({
-          ...selectedAdminChat,
-          leads: currentLeads.map((l: any) => ({ ...l, nm_polo: newPolo }))
-        });
+        setSelectedAdminChat({ ...selectedAdminChat, leads: currentLeads.map((l: any) => ({ ...l, nm_polo: newPolo })) });
       }
-      
     } catch (err) {
       console.error('Critical update error:', err);
+    }
+  };
+
+  const handleClaimLead = async (leadId: string) => {
+    if (!consultantId) return;
+    const { error } = await supabase.from('leads').update({
+      assigned_consultant_id: consultantId,
+      assigned_at: new Date().toISOString(),
+      lead_status: 'contato inicial'
+    }).eq('id', leadId);
+
+    if (error) {
+      alert('Erro ao assumir lead: ' + error.message);
+    } else {
+      setLeads(prev => prev.map(l => l.id === leadId ? { 
+        ...l, 
+        assigned_consultant_id: consultantId, 
+        assigned_at: new Date().toISOString(),
+        lead_status: 'contato inicial',
+        consultants: { nome: userName } 
+      } : l));
+    }
+  };
+
+  const handleUpdateLeadStatus = async (leadId: string, newStatus: string) => {
+    const { error } = await supabase.from('leads').update({
+      lead_status: newStatus
+    }).eq('id', leadId);
+
+    if (error) {
+      alert('Erro ao atualizar status: ' + error.message);
+    } else {
+      setLeads(prev => prev.map(l => l.id === leadId ? { ...l, lead_status: newStatus } : l));
     }
   };
 
@@ -795,7 +822,6 @@ export function AdminDashboard() {
           <img src="/imagens/logo_fundobranco.png" alt="Logotipo" className="h-[72px] w-auto brightness-0 invert opacity-90" />
         </div>
         <div className="p-4 flex-1 flex flex-col gap-2">
-           {userRole === 'admin' && (
             <>
               <button onClick={() => setActiveTab('overview')} className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors ${activeTab === 'overview' ? 'bg-white/10 text-white' : 'hover:bg-white/5 text-white/50'}`}>
                 <Eye size={20} /> Visão Geral
@@ -803,11 +829,12 @@ export function AdminDashboard() {
               <button onClick={() => setActiveTab('leads')} className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors ${activeTab === 'leads' ? 'bg-white/10 text-white' : 'hover:bg-white/5 text-white/50'}`}>
                 <Users size={20} /> Base de Leads
               </button>
-              <button onClick={() => setActiveTab('team')} className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors ${activeTab === 'team' ? 'bg-white/10 text-white' : 'hover:bg-white/5 text-white/50'}`}>
-                <Users size={20} /> Equipe
-              </button>
+              {userRole === 'admin' && (
+                <button onClick={() => setActiveTab('team')} className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors ${activeTab === 'team' ? 'bg-white/10 text-white' : 'hover:bg-white/5 text-white/50'}`}>
+                  <Users size={20} /> Equipe
+                </button>
+              )}
             </>
-          )}
           
           <button onClick={() => setActiveTab('chat')} className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors relative ${activeTab === 'chat' ? 'bg-[#fdb913]/20 text-[#fdb913]' : 'hover:bg-white/5 text-white/50'}`}>
             <MessageCircle size={20} /> Bate-Papo Local
@@ -1096,55 +1123,57 @@ export function AdminDashboard() {
           </div>
         )}
 
-        {activeTab === 'leads' && userRole === 'admin' && (
+        {activeTab === 'leads' && (
           <div className="animate-in fade-in duration-300 h-full flex flex-col">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
               <h2 className="text-3xl font-black text-[#003B5C] tracking-tight">Base de Leads</h2>
               
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex items-center gap-2 bg-white px-3 py-1.5 border border-gray-200 rounded-xl shadow-sm">
-                  <span className="text-xs font-bold text-gray-400 uppercase">De:</span>
-                  <input type="date" value={exportStartDate} onChange={e => setExportStartDate(e.target.value)} className="text-sm text-gray-600 outline-none" />
-                </div>
-                <div className="flex items-center gap-2 bg-white px-3 py-1.5 border border-gray-200 rounded-xl shadow-sm">
-                  <span className="text-xs font-bold text-gray-400 uppercase">Até:</span>
-                  <input type="date" value={exportEndDate} onChange={e => setExportEndDate(e.target.value)} className="text-sm text-gray-600 outline-none" />
-                </div>
-                <div className="relative">
-                  <button 
-                    onClick={() => setShowExportMenu(!showExportMenu)}
-                    className="bg-[#003B5C] hover:bg-[#002b4d] text-white font-bold text-sm px-6 py-2 rounded-xl transition-all shadow-md flex items-center gap-2 border border-blue-900/20"
-                  >
-                    <FileDown size={18} /> Exportar Base
-                  </button>
+              {userRole === 'admin' && (
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2 bg-white px-3 py-1.5 border border-gray-200 rounded-xl shadow-sm">
+                    <span className="text-xs font-bold text-gray-400 uppercase">De:</span>
+                    <input type="date" value={exportStartDate} onChange={e => setExportStartDate(e.target.value)} className="text-sm text-gray-600 outline-none" />
+                  </div>
+                  <div className="flex items-center gap-2 bg-white px-3 py-1.5 border border-gray-200 rounded-xl shadow-sm">
+                    <span className="text-xs font-bold text-gray-400 uppercase">Até:</span>
+                    <input type="date" value={exportEndDate} onChange={e => setExportEndDate(e.target.value)} className="text-sm text-gray-600 outline-none" />
+                  </div>
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowExportMenu(!showExportMenu)}
+                      className="bg-[#003B5C] hover:bg-[#002b4d] text-white font-bold text-sm px-6 py-2 rounded-xl transition-all shadow-md flex items-center gap-2 border border-blue-900/20"
+                    >
+                      <FileDown size={18} /> Exportar Base
+                    </button>
 
-                  {showExportMenu && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)}></div>
-                      <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-2xl z-50 overflow-hidden py-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                        <button 
-                          onClick={() => { handleExportCSV(); setShowExportMenu(false); }}
-                          className="w-full text-left px-5 py-2.5 text-sm font-bold text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors flex items-center gap-2"
-                        >
-                          <div className="w-2 h-2 rounded-full bg-green-500"></div> Exportar CSV
-                        </button>
-                        <button 
-                          onClick={() => { handleExportXLSX(); setShowExportMenu(false); }}
-                          className="w-full text-left px-5 py-2.5 text-sm font-bold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors flex items-center gap-2"
-                        >
-                          <div className="w-2 h-2 rounded-full bg-emerald-600"></div> Exportar Excel
-                        </button>
-                        <button 
-                          onClick={() => { handleExportPDF(); setShowExportMenu(false); }}
-                          className="w-full text-left px-5 py-2.5 text-sm font-bold text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors flex items-center gap-2"
-                        >
-                          <div className="w-2 h-2 rounded-full bg-red-500"></div> Exportar PDF
-                        </button>
-                      </div>
-                    </>
-                  )}
+                    {showExportMenu && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)}></div>
+                        <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-2xl z-50 overflow-hidden py-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                          <button 
+                            onClick={() => { handleExportCSV(); setShowExportMenu(false); }}
+                            className="w-full text-left px-5 py-2.5 text-sm font-bold text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors flex items-center gap-2"
+                          >
+                            <div className="w-2 h-2 rounded-full bg-green-500"></div> Exportar CSV
+                          </button>
+                          <button 
+                            onClick={() => { handleExportXLSX(); setShowExportMenu(false); }}
+                            className="w-full text-left px-5 py-2.5 text-sm font-bold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors flex items-center gap-2"
+                          >
+                            <div className="w-2 h-2 rounded-full bg-emerald-600"></div> Exportar Excel
+                          </button>
+                          <button 
+                            onClick={() => { handleExportPDF(); setShowExportMenu(false); }}
+                            className="w-full text-left px-5 py-2.5 text-sm font-bold text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors flex items-center gap-2"
+                          >
+                            <div className="w-2 h-2 rounded-full bg-red-500"></div> Exportar PDF
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
             
             <div className="bg-white rounded-[24px] shadow-sm border border-gray-200 overflow-hidden overflow-x-auto">
@@ -1153,8 +1182,9 @@ export function AdminDashboard() {
                    <tr className="text-[11px] uppercase tracking-wider">
                      <th className="px-6 py-4 font-black">Data/Hora</th>
                      <th className="px-6 py-4 font-black">Lead</th>
-                     <th className="px-6 py-4 font-black">Curso Escolhido</th>
+                     <th className="px-6 py-4 font-black">Curso</th>
                      <th className="px-6 py-4 font-black text-center">Origem / Conteúdo</th>
+                     <th className="px-6 py-4 font-black">Atendimento</th>
                      <th className="px-6 py-4 font-black">Mensagem</th>
                    </tr>
                  </thead>
@@ -1185,6 +1215,39 @@ export function AdminDashboard() {
                               </span>
                             )}
                           </div>
+                        </td>
+                        <td className="px-6 py-4 min-w-[200px]">
+                          {!l.assigned_consultant_id ? (
+                            <button 
+                              onClick={() => handleClaimLead(l.id)}
+                              className="w-full bg-green-500 hover:bg-green-600 text-white text-[10px] font-black uppercase py-2 px-3 rounded-lg shadow-sm transition-all"
+                            >
+                              Assumir Lead
+                            </button>
+                          ) : (
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                                <span className="text-[10px] font-black text-[#003B5C] uppercase">{l.consultants?.nome || 'Consultor'}</span>
+                              </div>
+                              <select 
+                                value={l.lead_status || 'novo'}
+                                onChange={(e) => handleUpdateLeadStatus(l.id, e.target.value)}
+                                className={`text-[9px] font-bold uppercase p-1.5 rounded border transition-colors outline-none ${
+                                  l.lead_status === 'matriculado' ? 'bg-green-50 border-green-200 text-green-700' :
+                                  l.lead_status === 'negociando' ? 'bg-blue-50 border-blue-200 text-blue-700' :
+                                  'bg-gray-50 border-gray-200 text-gray-600'
+                                }`}
+                              >
+                                <option value="novo">Novo</option>
+                                <option value="tentativa de contato">Tentativa de Contato</option>
+                                <option value="contato inicial">Contato Inicial</option>
+                                <option value="negociando">Negociando</option>
+                                <option value="boleto enviado">Boleto Enviado</option>
+                                <option value="matriculado">Matriculado</option>
+                              </select>
+                            </div>
+                          )}
                         </td>
                        <td className="px-6 py-4 text-xs text-gray-600 italic">
                          {l.observacao || 'Sem observações'}
