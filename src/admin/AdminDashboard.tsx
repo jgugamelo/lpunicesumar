@@ -443,7 +443,7 @@ export function AdminDashboard() {
 
   // Carregar Métricas da Dashboard
   useEffect(() => {
-    if (activeTab === 'overview' && userRole === 'admin') {
+    if (activeTab === 'overview') {
       const fetchStats = async () => {
         let dateQueryStart = '';
         let dateQueryEnd = '';
@@ -911,7 +911,7 @@ export function AdminDashboard() {
            </div>
         )}
 
-        {activeTab === 'overview' && userRole === 'admin' && (
+        {activeTab === 'overview' && (
           <div className="animate-in fade-in duration-300">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
               <h2 className="text-3xl font-black text-[#003B5C] tracking-tight">Visão Geral Executiva</h2>
