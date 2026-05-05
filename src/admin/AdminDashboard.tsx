@@ -94,6 +94,13 @@ export function AdminDashboard() {
   const [team, setTeam] = useState<any[]>([]);
   const [recentVisits, setRecentVisits] = useState<any[]>([]);
   const [availablePolos, setAvailablePolos] = useState<string[]>([]);
+  const [consultantStats, setConsultantStats] = useState({
+    myTotalLeads: 0,
+    myOpenLeads: 0,
+    myEnrollments: 0,
+    myActiveChats: 0,
+    myRecentLeads: [] as any[]
+  });
   
   // Date filters
   const [dateFilter, setDateFilter] = useState<'hoje' | 'mes' | 'ano' | 'tudo' | 'personalizado'>('tudo');
@@ -525,6 +532,34 @@ export function AdminDashboard() {
            }
         });
         setPerfConsultor(Object.entries(counts).map(([nome, count]) => ({nome, count})).sort((a,b)=>b.count - a.count));
+
+        // Dados específicos do consultor se não for admin
+        if (userRole === 'consultor' && consultantId) {
+          let qMyLeads = supabase.from('leads').select('*').eq('assigned_consultant_id', consultantId).order('created_at', { ascending: false });
+          let qMyChats = supabase.from('chats').select('*', { count: 'exact', head: true }).eq('consultant_id', consultantId).eq('status', 'active');
+          
+          if (dateQueryStart) {
+            qMyLeads = qMyLeads.gte('created_at', dateQueryStart);
+            qMyChats = qMyChats.gte('started_at', dateQueryStart);
+          }
+          if (dateQueryEnd) {
+            qMyLeads = qMyLeads.lte('created_at', dateQueryEnd);
+            qMyChats = qMyChats.lte('started_at', dateQueryEnd);
+          }
+
+          const [{ data: myLData }, { count: myCCount }] = await Promise.all([qMyLeads, qMyChats]);
+          
+          if (myLData) {
+            const enrolled = myLData.filter(l => l.lead_status === 'matriculado').length;
+            setConsultantStats({
+              myTotalLeads: myLData.length,
+              myOpenLeads: myLData.length - enrolled,
+              myEnrollments: enrolled,
+              myActiveChats: myCCount || 0,
+              myRecentLeads: myLData.slice(0, 5)
+            });
+          }
+        }
       };
       fetchStats();
     }
@@ -914,7 +949,9 @@ export function AdminDashboard() {
         {activeTab === 'overview' && (
           <div className="animate-in fade-in duration-300">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
-              <h2 className="text-3xl font-black text-[#003B5C] tracking-tight">Visão Geral Executiva</h2>
+              <h2 className="text-3xl font-black text-[#003B5C] tracking-tight">
+                {userRole === 'admin' ? 'Visão Geral Executiva' : 'Minha Performance'}
+              </h2>
               <div className="mt-4 md:mt-0 flex gap-4 items-center">
                 {dateFilter === 'personalizado' && (
                   <div className="flex gap-2 animate-in slide-in-from-right-2 duration-300">
@@ -951,178 +988,202 @@ export function AdminDashboard() {
                 </select>
               </div>
             </div>
-            
-            {/* KPI Cards */}
-            {(() => {
-              const activeConvs = metrics.chats + metrics.wpp + metrics.wppDireto;
-              
-              return (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-                      <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Visitas no Site</span>
-                      <span className="text-4xl font-black text-[#003B5C]">{stats.visits}</span>
+                 
+            {userRole === 'admin' ? (
+              <>
+                {/* KPI Cards Admin */}
+                {(() => {
+                  const activeConvs = metrics.chats + metrics.wpp + metrics.wppDireto;
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Visitas no Site</span>
+                        <span className="text-4xl font-black text-[#003B5C]">{stats.visits}</span>
+                      </div>
+                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Leads Gerados</span>
+                        <span className="text-4xl font-black text-[#003B5C]">{stats.leads}</span>
+                      </div>
+                      <div className="bg-[#003B5C] p-6 rounded-2xl shadow-xl shadow-blue-900/20 flex flex-col">
+                        <span className="text-xs font-bold text-blue-300 uppercase tracking-widest mb-2">Conversões Ativas</span>
+                        <span className="text-4xl font-black text-white">{activeConvs}</span>
+                        <span className="text-[10px] text-blue-200 font-bold mt-2 uppercase">Chat ou WhatsApp</span>
+                      </div>
+                      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Tx de Conversão</span>
+                        <span className="text-4xl font-black text-[#003B5C]">{stats.visits > 0 ? ((activeConvs / stats.visits) * 100).toFixed(1) : '0'}%</span>
+                      </div>
                     </div>
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-                      <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Leads Gerados</span>
-                      <span className="text-4xl font-black text-[#003B5C]">{stats.leads}</span>
-                    </div>
-                    <div className="bg-[#003B5C] p-6 rounded-2xl shadow-xl shadow-blue-900/20 flex flex-col">
-                      <span className="text-xs font-bold text-blue-300 uppercase tracking-widest mb-2">Conversões Ativas</span>
-                      <span className="text-4xl font-black text-white">{activeConvs}</span>
-                      <span className="text-[10px] text-blue-200 font-bold mt-2 uppercase">Chat ou WhatsApp</span>
-                    </div>
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-                      <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Tx de Conversão</span>
-                      <span className="text-4xl font-black text-[#003B5C]">{stats.visits > 0 ? ((activeConvs / stats.visits) * 100).toFixed(1) : '0'}%</span>
+                  );
+                })()}
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+                   <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+                      <h3 className="font-black text-[#003B5C] mb-4">Volume por Canal</h3>
+                      <div className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl">
+                         <div className="flex flex-col">
+                            <span className="text-[10px] font-black text-gray-400 uppercase mb-1">WhatsApp (Form)</span>
+                            <span className="text-xl font-black text-green-600">{metrics.wpp}</span>
+                         </div>
+                         <div className="flex flex-col">
+                            <span className="text-[10px] font-black text-gray-400 uppercase mb-1">WhatsApp Direto</span>
+                            <span className="text-xl font-black text-green-700">{metrics.wppDireto}</span>
+                         </div>
+                         <div className="flex flex-col">
+                            <span className="text-[10px] font-black text-gray-400 uppercase mb-1">Chat Nativo</span>
+                            <span className="text-xl font-black text-blue-600">{metrics.chats}</span>
+                         </div>
+                      </div>
+                   </div>
+
+                   <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+                      <h3 className="font-black text-[#003B5C] mb-4">Atendimentos por Consultor (Chat)</h3>
+                      {perfConsultor.length === 0 ? (
+                        <div className="text-sm text-gray-400 italic">Nenhum atendimento assumido no período.</div>
+                      ) : (
+                        <div className="flex flex-col gap-2 max-h-32 overflow-y-auto">
+                          {perfConsultor.map((p, idx) => (
+                            <div key={idx} className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg">
+                              <span className="font-bold text-gray-600 text-sm">{p.nome}</span>
+                              <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-black">{p.count} chats</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                   </div>
+                </div>
+
+                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-10">
+                  <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-slate-50/50">
+                    <div>
+                       <h3 className="font-black text-[#003B5C]">Performance por Origem (UTM)</h3>
+                       <p className="text-xs text-gray-400 font-bold uppercase mt-1">Ranqueado por maior volume de Leads</p>
                     </div>
                   </div>
-                  
-                  {/* Detailed metrics box for channels and consultants */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
-                       <h3 className="font-black text-[#003B5C] mb-4">Volume por Canal</h3>
-                       <div className="flex gap-8">
-                         <div className="flex flex-col">
-                           <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">WhatsApp (Form)</span>
-                           <span className="text-2xl font-black text-green-600">{metrics.wpp}</span>
-                         </div>
-                         <div className="flex flex-col">
-                           <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">WhatsApp Direto</span>
-                           <span className="text-2xl font-black text-green-500">{metrics.wppDireto}</span>
-                         </div>
-                         <div className="flex flex-col">
-                           <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">Chat Nativo</span>
-                           <span className="text-2xl font-black text-blue-600">{metrics.chats}</span>
-                         </div>
-                       </div>
-                    </div>
-                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
-                       <h3 className="font-black text-[#003B5C] mb-4">Atendimentos por Consultor (Chat)</h3>
-                       {perfConsultor.length === 0 ? (
-                         <div className="text-sm text-gray-400 italic">Nenhum atendimento assumido no período.</div>
-                       ) : (
-                         <div className="flex flex-col gap-2 max-h-32 overflow-y-auto">
-                           {perfConsultor.map((p, idx) => (
-                             <div key={idx} className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg">
-                               <span className="font-bold text-gray-600 text-sm">{p.nome}</span>
-                               <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-black">{p.count} chats</span>
-                             </div>
-                           ))}
-                         </div>
-                       )}
-                    </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-white">
+                          <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Origem / Mídia / Campanha</th>
+                          <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Visitas</th>
+                          <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Leads</th>
+                          <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Conversão</th>
+                          <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Barra</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          const groups: Record<string, { source: string, medium: string, campaign: string, visits: number, leads: number, conversions: number }> = {};
+                          analyticsVisits.forEach(v => {
+                            const key = `${v.utm_source || 'DIRETO'}|${v.utm_medium || '-'}|${v.utm_campaign || '-'}`;
+                            if (!groups[key]) groups[key] = { source: v.utm_source || 'DIRETO', medium: v.utm_medium || '-', campaign: v.utm_campaign || '-', visits: 0, leads: 0, conversions: 0 };
+                            groups[key].visits++;
+                          });
+                          analyticsLeads.forEach(l => {
+                            const key = `${l.utm_source || 'DIRETO'}|${l.utm_medium || '-'}|${l.utm_campaign || '-'}`;
+                            if (!groups[key]) groups[key] = { source: l.utm_source || 'DIRETO', medium: l.utm_medium || '-', campaign: l.utm_campaign || '-', visits: 0, leads: 0, conversions: 0 };
+                            groups[key].leads++;
+                            if (l.contato_preferencia) groups[key].conversions++;
+                          });
+                          return Object.values(groups).sort((a, b) => b.conversions - a.conversions).map((g, idx) => {
+                            const convRate = g.visits > 0 ? (g.conversions / g.visits) * 100 : 0;
+                            return (
+                              <tr key={idx} className="border-t border-gray-50 hover:bg-slate-50/30 transition-colors text-xs">
+                                <td className="px-6 py-4">
+                                   <div className="flex gap-1">
+                                      <span className="font-black text-blue-600">{g.source}</span>
+                                      <span className="text-gray-400">/ {g.medium}</span>
+                                   </div>
+                                </td>
+                                <td className="px-6 py-4 text-center">{g.visits}</td>
+                                <td className="px-6 py-4 text-center">{g.leads}</td>
+                                <td className="px-6 py-4 text-center font-bold">{g.conversions}</td>
+                                <td className="px-6 py-4">
+                                   <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                      <div className="h-full bg-blue-500" style={{ width: `${Math.min(convRate, 100)}%` }}></div>
+                                   </div>
+                                </td>
+                              </tr>
+                            );
+                          });
+                        })()}
+                      </tbody>
+                    </table>
                   </div>
-
-                </>
-              );
-            })()}
-            
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-10">
-              <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-slate-50/50">
-                <div>
-                   <h3 className="font-black text-[#003B5C]">Performance por Origem (UTM)</h3>
-                   <p className="text-xs text-gray-400 font-bold uppercase mt-1">Ranqueado por maior volume de Leads</p>
                 </div>
-                <div className="px-4 py-2 bg-white rounded-xl border border-gray-100 text-[11px] font-black text-gray-500 uppercase">
-                   Total de {Array.from(new Set(recentVisits.map(v => v.utm_source || 'DIRETO'))).length} Fontes
+              </>
+            ) : (
+              <>
+                {/* KPI Cards Consultor */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Meus Leads Assumidos</span>
+                    <span className="text-4xl font-black text-[#003B5C]">{consultantStats.myTotalLeads}</span>
+                  </div>
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Em Atendimento</span>
+                    <span className="text-4xl font-black text-amber-500">{consultantStats.myOpenLeads}</span>
+                  </div>
+                  <div className="bg-[#003B5C] p-6 rounded-2xl shadow-xl shadow-blue-900/20 flex flex-col">
+                    <span className="text-xs font-bold text-blue-300 uppercase tracking-widest mb-2">Minhas Matrículas</span>
+                    <span className="text-4xl font-black text-white">{consultantStats.myEnrollments}</span>
+                    <span className="text-[10px] text-blue-200 font-bold mt-2 uppercase">Meta Batida</span>
+                  </div>
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Minha Conversão</span>
+                    <span className="text-4xl font-black text-green-600">
+                      {consultantStats.myTotalLeads > 0 ? ((consultantStats.myEnrollments / consultantStats.myTotalLeads) * 100).toFixed(1) : '0'}%
+                    </span>
+                  </div>
                 </div>
-              </div>
-              
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-white">
-                      <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Origem / Mídia / Campanha</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Visitas</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Leads</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Conversão</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Barra de Conversão</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      const groups: Record<string, { source: string, medium: string, campaign: string, visits: number, leads: number, conversions: number }> = {};
-                      
-                      analyticsVisits.forEach(v => {
-                        const key = `${v.utm_source || 'DIRETO'}|${v.utm_medium || '-'}|${v.utm_campaign || '-'}`;
-                        if (!groups[key]) groups[key] = { source: v.utm_source || 'DIRETO', medium: v.utm_medium || '-', campaign: v.utm_campaign || '-', visits: 0, leads: 0, conversions: 0 };
-                        groups[key].visits++;
-                      });
-                      
-                      analyticsLeads.forEach(l => {
-                        const key = `${l.utm_source || 'DIRETO'}|${l.utm_medium || '-'}|${l.utm_campaign || '-'}`;
-                        if (!groups[key]) {
-                          groups[key] = { source: l.utm_source || 'DIRETO', medium: l.utm_medium || '-', campaign: l.utm_campaign || '-', visits: 0, leads: 0, conversions: 0 };
-                        }
-                        groups[key].leads++;
-                        if (l.contato_preferencia) groups[key].conversions++;
-                      });
 
-                      const sorted = Object.values(groups).sort((a, b) => b.conversions - a.conversions);
-
-                      return sorted.map((g, idx) => {
-                        const convRate = g.visits > 0 ? (g.conversions / g.visits) * 100 : 0;
-                        return (
-                          <tr key={idx} className="border-t border-gray-50 hover:bg-slate-50/30 transition-colors">
-                            <td className="px-6 py-4">
-                               <div className="flex flex-wrap gap-1.5 items-center">
-                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${g.source === 'DIRETO' ? 'bg-gray-100 text-gray-500' : 'bg-blue-50 text-blue-600'}`}>{g.source}</span>
-                                  {g.medium !== '-' && <span className="px-2 py-0.5 rounded bg-gray-50 text-gray-400 text-[10px] font-medium">{g.medium}</span>}
-                                  {g.campaign !== '-' && <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-600 text-[10px] font-bold italic">{g.campaign}</span>}
-                               </div>
-                            </td>
-                            <td className="px-6 py-4 text-center font-bold text-gray-500 text-sm">{g.visits}</td>
-                            <td className="px-6 py-4 text-center font-medium text-[#003B5C] text-sm">{g.leads}</td>
-                            <td className="px-6 py-4 text-center font-black text-[#003B5C] text-sm">
-                               {g.conversions}
-                               {g.leads > 0 && <span className="text-[10px] text-gray-400 block font-normal">({((g.conversions/g.leads)*100).toFixed(0)}% do lead)</span>}
-                            </td>
-                            <td className={`px-6 py-4 text-center font-black text-sm ${convRate > 10 ? 'text-green-600' : 'text-blue-500'}`}>{convRate.toFixed(1)}%</td>
-                            <td className="px-6 py-4 min-w-[150px]">
-                               <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                  <div className={`h-full transition-all duration-1000 ${convRate > 10 ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(convRate, 100)}%` }}></div>
-                               </div>
-                            </td>
-                          </tr>
-                        );
-                      });
-                    })()}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-               <div className="p-6 border-b border-gray-50">
-                  <h3 className="font-black text-[#003B5C]">Últimos Acessos Detalhados</h3>
-               </div>
-               <div className="overflow-x-auto">
-                 <table className="w-full text-left border-collapse text-xs">
-                   <thead>
-                     <tr className="bg-slate-50/50">
-                       <th className="px-6 py-3 font-bold text-gray-400 uppercase">Data</th>
-                       <th className="px-6 py-3 font-bold text-gray-400 uppercase">Origem</th>
-                       <th className="px-6 py-3 font-bold text-gray-400 uppercase">Mídia</th>
-                       <th className="px-6 py-3 font-bold text-gray-400 uppercase">Campanha</th>
-                     </tr>
-                   </thead>
-                   <tbody>
-                     {recentVisits.slice(0, 10).map((v, idx) => (
-                       <tr key={idx} className="border-t border-gray-50">
-                         <td className="px-6 py-3 text-gray-500">{new Date(v.created_at).toLocaleString('pt-BR')}</td>
-                         <td className="px-6 py-3"><span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold uppercase">{v.utm_source || 'DIRETO'}</span></td>
-                         <td className="px-6 py-3 text-gray-400">{v.utm_medium || '-'}</td>
-                         <td className="px-6 py-3 text-gray-400">{v.utm_campaign || '-'}</td>
-                       </tr>
-                     ))}
-                   </tbody>
-                 </table>
-               </div>
-            </div>
+                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-10">
+                   <h3 className="font-black text-[#003B5C] mb-6 flex items-center gap-2">
+                     <Users size={20} className="text-[#fdb913]" /> Meus Últimos Leads
+                   </h3>
+                   <div className="overflow-x-auto">
+                     <table className="w-full text-left">
+                       <thead>
+                         <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                           <th className="px-4 py-3">Data</th>
+                           <th className="px-4 py-3">Lead</th>
+                           <th className="px-4 py-3">Curso</th>
+                           <th className="px-4 py-3">Status Atual</th>
+                         </tr>
+                       </thead>
+                       <tbody>
+                         {consultantStats.myRecentLeads.length === 0 ? (
+                           <tr>
+                             <td colSpan={4} className="py-10 text-center text-sm text-gray-400 italic">Você ainda não assumiu nenhum lead no período.</td>
+                           </tr>
+                         ) : (
+                           consultantStats.myRecentLeads.map(l => (
+                             <tr key={l.id} className="border-b border-gray-50 hover:bg-slate-50/50 transition-colors">
+                               <td className="px-4 py-4 text-xs text-gray-400 font-bold">{new Date(l.created_at).toLocaleDateString('pt-BR')}</td>
+                               <td className="px-4 py-4">
+                                 <div className="font-bold text-sm text-[#003B5C]">{l.nome}</div>
+                                 <div className="text-[10px] text-gray-500">{l.whatsapp}</div>
+                               </td>
+                               <td className="px-4 py-4 text-xs font-bold text-gray-600 uppercase">{l.nm_curso}</td>
+                               <td className="px-4 py-4">
+                                 <span className={`px-2 py-1 rounded-full text-[9px] font-black uppercase ${
+                                   l.lead_status === 'matriculado' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                                 }`}>
+                                   {l.lead_status}
+                                 </span>
+                               </td>
+                             </tr>
+                           ))
+                         )}
+                       </tbody>
+                     </table>
+                   </div>
+                </div>
+              </>
+            )}
           </div>
         )}
-
+        
         {activeTab === 'leads' && (
           <div className="animate-in fade-in duration-300 h-full flex flex-col">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
