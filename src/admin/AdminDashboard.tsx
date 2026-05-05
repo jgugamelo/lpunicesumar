@@ -13,7 +13,9 @@ export function AdminDashboard() {
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [presenceChannel, setPresenceChannel] = useState<any>(null);
   const [onlineConsultantNames, setOnlineConsultantNames] = useState<Set<string>>(new Set());
-  const [isAdminOnline, setIsAdminOnline] = useState(false);
+  const [isAdminOnline, setIsAdminOnline] = useState(() => {
+    return localStorage.getItem('admin_online_status') === 'true';
+  });
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [consultantId, setConsultantId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -165,10 +167,11 @@ export function AdminDashboard() {
       setOnlineConsultantNames(names);
     }).subscribe(async (status) => {
       if (status === 'SUBSCRIBED' && userRole && userName) {
-        // Consultores ficam online automático, Admins escolhem via toggle
         const shouldBeOnline = userRole === 'consultor' || (userRole === 'admin' && isAdminOnline);
         if (shouldBeOnline) {
           await channel.track({ online: true, role: userRole, nome: userName, avatar_url: userAvatar });
+        } else {
+          await channel.untrack();
         }
       }
     });
@@ -178,7 +181,7 @@ export function AdminDashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userRole, consultantId, userName, userAvatar]);
+  }, [userRole, consultantId, userName, userAvatar, isAdminOnline]);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -818,7 +821,11 @@ export function AdminDashboard() {
                 <span className="text-[11px] font-bold text-white/60">{isAdminOnline ? 'Disponível no Site' : 'Invisível'}</span>
               </div>
               <button 
-                onClick={() => setIsAdminOnline(!isAdminOnline)}
+                onClick={() => {
+                  const newState = !isAdminOnline;
+                  setIsAdminOnline(newState);
+                  localStorage.setItem('admin_online_status', String(newState));
+                }}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 focus:outline-none ${isAdminOnline ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-white/20'}`}
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform duration-300 ${isAdminOnline ? 'translate-x-6' : 'translate-x-1'}`} />
